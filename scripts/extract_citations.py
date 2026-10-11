@@ -1,19 +1,22 @@
 """Extract the case citations from a fetched filing into the ledger.
 
 Makes no network calls. Re-extracting replaces the filing's citations, which
-deletes the findings of every run on it, so that needs --force.
+deletes the findings of every run on it, so that needs --force, and the ledger
+is copied to data/archive/ first so those findings stay on record.
 
     .venv/bin/python scripts/extract_citations.py [--entry N] [--docket CONFIG] [--force]
 """
 
 import argparse
 import json
+import shutil
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 from gainsay.dockets import DEFAULT_DOCKET_CONFIG, known_docket, load_docket_config
 from gainsay.extract import extract
-from gainsay.ledger import connect, find_filing, save_extraction
+from gainsay.ledger import DEFAULT_LEDGER_PATH, connect, find_filing, save_extraction
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ENTRY = 21
@@ -40,6 +43,13 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
+
+    if runs:
+        archive = REPO_ROOT / "data" / "archive" / f"gainsay-{datetime.now(UTC):%Y%m%dT%H%M%SZ}.sqlite"
+        archive.parent.mkdir(parents=True, exist_ok=True)
+        conn.execute("PRAGMA wal_checkpoint")
+        shutil.copy2(DEFAULT_LEDGER_PATH, archive)
+        print(f"copied the ledger with {runs} runs' findings to {archive.relative_to(REPO_ROOT)}")
 
     extraction = extract((REPO_ROOT / filing["text_path"]).read_text())
     save_extraction(conn, filing["id"], extraction)

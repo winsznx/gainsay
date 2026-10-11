@@ -88,3 +88,23 @@ def test_in_re_names_keep_their_prefix_and_statutes_are_not_case_citations():
     assert citation.cite_text.startswith("In re Air Crash")
     assert citation.authority.case_name == "In re Air Crash Disaster Near New Orleans, La."
     assert extraction.non_case_citations == 1
+
+
+def test_nested_single_quote_goes_to_the_citation_after_it_even_without_a_closing_mark():
+    text = (
+        "The court stated, “Congress enacted the Convention to 'modernize and unify the Warsaw system. "
+        "“El Al Israel Airlines, Ltd. v. Tseng, 525 U.S. 155, 161 (1999). It is plaintiff's right.” "
+        "Varghese v. China Southern Airlines Co., Ltd., 925 F.3d 1339 (11th Cir. 2019)."
+    )
+    tseng, varghese = extract(text).citations
+    assert tseng.quotes == ["modernize and unify the Warsaw system."]
+    assert tseng.in_quotation
+
+
+def test_apostrophes_are_not_nested_quotes():
+    text = (
+        "The court stated, “The carrier's duty and the passengers’ claims survive the stay.” "
+        "Zicherman v. Korean Air Lines Co., Ltd., 516 F.3d 1237, 1254 (11th Cir. 2008)."
+    )
+    (zicherman,) = extract(text).citations
+    assert zicherman.quotes == ["The carrier's duty and the passengers’ claims survive the stay."]

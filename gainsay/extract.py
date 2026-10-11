@@ -27,6 +27,8 @@ _OCR_FIXES = (
 )
 
 _DOUBLE_QUOTES = "\"“”"
+_SINGLE_OPENERS = "'‘"
+_SINGLE_CLOSERS = "'’"
 _SENTENCE_END = re.compile(r"[.?!][\"”’)\]]*\s+(?=[\"“(]?[A-Z])")
 _ABBREVIATIONS = frozenset(
     "v vs co corp inc ltd no nos ct app cir dist supp super div mr mrs ms dr st jr sr "
@@ -106,6 +108,44 @@ def find_quotes(text: str) -> list[tuple[int, int]]:
     return spans
 
 
+def find_nested_quotes(
+    text: str, outer: list[tuple[int, int]], citation_starts: list[int]
+) -> list[tuple[int, int]]:
+    """Single-quoted passages inside double-quoted ones, marks excluded.
+
+    Legal writing marks a quotation within a quotation with single quotes. An
+    apostrophe hugs a letter on both sides, so only a mark after a space or
+    bracket opens. When OCR loses the closing mark, the passage ends at the
+    last sentence end before the citation that follows it, since a quotation
+    is followed by its source.
+    """
+    spans = []
+    for qs, qe in outer:
+        i = qs
+        while i < qe - 1:
+            before = text[i - 1] if i else " "
+            if text[i] in _SINGLE_OPENERS and (before.isspace() or before in "([") and text[i + 1].isalpha():
+                start = i + 1
+                end = _nested_end(text, start, qe, citation_starts)
+                if end is not None:
+                    spans.append((start, end))
+                    i = end
+            i += 1
+    return spans
+
+
+def _nested_end(text: str, start: int, limit: int, citation_starts: list[int]) -> int | None:
+    next_citation = min((c for c in citation_starts if start < c < limit), default=limit)
+    for j in range(start, next_citation):
+        after = text[j + 1] if j + 1 < len(text) else " "
+        if text[j] in _SINGLE_CLOSERS and not text[j - 1].isspace() and not after.isalnum():
+            return j
+    sentence_ends = [m.end() for m in re.finditer(r"[.?!]", text[start:next_citation])]
+    if next_citation == limit or not sentence_ends:
+        return None
+    return start + sentence_ends[-1]
+
+
 def sentence_spans(text: str, protected: list[tuple[int, int]]) -> list[tuple[int, int]]:
     starts = [0]
     for match in _SENTENCE_END.finditer(text):
@@ -153,7 +193,8 @@ def extract(raw_text: str) -> Extraction:
             )
         )
 
-    _attribute_quotes(text, quotes, sentences, occurrences)
+    nested = find_nested_quotes(text, quotes, [o.span[0] for o in occurrences])
+    _attribute_quotes(text, quotes + nested, sentences, occurrences)
     return Extraction(
         text=text,
         authorities=authorities,
