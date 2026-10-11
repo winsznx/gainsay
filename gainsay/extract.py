@@ -34,6 +34,22 @@ _ABBREVIATIONS = frozenset(
     "v vs co corp inc ltd no nos ct app cir dist supp super div mr mrs ms dr st jr sr "
     "u.s e.g i.e id fed civ ill n.y n.j cal tex ga la fla stat ann al cf sec ch pp art".split()
 )
+# A table of contents or authorities line ends in a dot leader to page numbers.
+_TABLE_LEADER = re.compile(r"\.{8,}|…{3,}")
+_TABLE_LOOKAHEAD = 100
+# Subsequent history between a cite and a nameless cite of a later decision.
+_HISTORY = re.compile(
+    r"^[\s,]*(?:aff['’][dg]|rev['’][dg]|vacated|modified|remanded|cert\.\s+denied|"
+    r"reh['’]g\s+denied|abrogated|overruled)[\w\s.,'’]*?,\s*$",
+    re.IGNORECASE,
+)
+# Record citations (declarations, exhibits, transcripts, docket entries) that
+# an Id. may refer back to instead of a case.
+_RECORD_REFERENCE = re.compile(
+    r"\b(?:Decl|Aff|Affirm|Ex|Exh|Tr|Dkt|ECF|Doc|Compl)\.?\s*(?:No\.\s*)?[¶\d]|¶"
+)
+# Cites whose pages are paragraphs or star pages: neutral and database cites.
+_YEAR_FIRST_CITE = re.compile(r"^\d{4} ")
 _SIGNALS = re.compile(r"\b(?:see|also|cf|e\.g|accord|but|compare|and|with)\b\.?,?", re.I)
 _MIN_PROPOSITION_WORDS = 5
 
@@ -66,6 +82,8 @@ class Extraction:
     authorities: list[Authority]
     citations: list[Occurrence]
     non_case_citations: int
+    table_entries: int = 0
+    record_references: int = 0
 
 
 def clean_text(raw: str) -> str:
@@ -166,23 +184,36 @@ def extract(raw_text: str) -> Extraction:
     ]
     groups = _group_parallels(text, case_citations)
     spans = [_group_span(text, group) for group in groups]
-
     protected = spans + [_full_span(c) for c in found if c not in case_citations]
+
+    # Tables of contents and authorities repeat the brief's citations with page
+    # numbers and no proposition, so only the citations in the body are checked.
+    body = [(g, s) for g, s in zip(groups, spans) if not _TABLE_LEADER.search(text[s[1] : s[1] + _TABLE_LOOKAHEAD])]
+    table_entries = len(groups) - len(body)
+    groups, spans = [g for g, _ in body], [s for _, s in body]
+
     sentences = sentence_spans(text, protected)
     quotes = find_quotes(text)
     antecedents = _antecedents(found)
 
     authorities: list[Authority] = []
     occurrences: list[Occurrence] = []
-    for ordinal, (group, span) in enumerate(zip(groups, spans), start=1):
+    record_references = 0
+    for group, span in zip(groups, spans):
         lead = group[0]
+        previous = occurrences[-1] if occurrences else None
         if isinstance(lead, IdCitation):
-            authority = occurrences[-1].authority if occurrences else None
+            if previous is None or _refers_to_record(text, previous, span, _pincite(lead)):
+                record_references += 1
+                continue
+            authority = previous.authority
+        elif previous and previous.authority and _is_history(text, previous.span[1], lead):
+            authority = _authority_for(text, group, antecedents, authorities, previous.authority.case_name)
         else:
             authority = _authority_for(text, group, antecedents, authorities)
         occurrences.append(
             Occurrence(
-                ordinal=ordinal,
+                ordinal=len(occurrences) + 1,
                 kind=_kind(lead),
                 authority=authority,
                 cite_text=text[span[0] : span[1]],
@@ -200,6 +231,8 @@ def extract(raw_text: str) -> Extraction:
         authorities=authorities,
         citations=occurrences,
         non_case_citations=len(found) - len(case_citations),
+        table_entries=table_entries,
+        record_references=record_references,
     )
 
 
@@ -261,6 +294,7 @@ def _authority_for(
     group: list[CitationBase],
     antecedents: dict[int, FullCaseCitation],
     authorities: list[Authority],
+    case_name: str | None = None,
 ) -> Authority | None:
     lead = group[0]
     full = [c for c in group if isinstance(c, FullCaseCitation)]
@@ -279,7 +313,7 @@ def _authority_for(
     named = full[0]
     authority = Authority(
         ordinal=len(authorities) + 1,
-        case_name=_case_name(text, named),
+        case_name=case_name or _case_name(text, named),
         reporter_cites=cites,
         year=named.metadata.year,
         court=named.metadata.court,
@@ -292,10 +326,34 @@ def _case_name(text: str, citation: FullCaseCitation) -> str:
     start = _name_start(text, citation)
     name = text[start : citation.span()[0]].strip().rstrip(",").strip()
     name = re.sub(r"\.{2,}", ".", name)
+    name = re.sub(r",\s*Nos?\.\s.*$", "", name)
     if name:
         return name
     plaintiff, defendant = citation.metadata.plaintiff, citation.metadata.defendant
     return " v. ".join(part for part in (plaintiff, defendant) if part)
+
+
+def _refers_to_record(text: str, previous: "Occurrence", span: tuple[int, int], pincite: str | None) -> bool:
+    """An Id. points at the record, not the last case, when a record cite comes
+    between them, or when it pins a paragraph of a case reported by page."""
+    if _RECORD_REFERENCE.search(text[previous.span[1] : span[0]]):
+        return True
+    paged = previous.authority and not any(_YEAR_FIRST_CITE.match(c) for c in previous.authority.reporter_cites)
+    return bool(pincite and "¶" in pincite and paged)
+
+
+def _is_history(text: str, previous_end: int, citation: CitationBase) -> bool:
+    """A nameless full cite after "aff'd," and the like reports a later decision in the same case.
+
+    eyecite sometimes folds the history into the earlier cite's span, which
+    leaves the later cite inside it.
+    """
+    if not isinstance(citation, FullCaseCitation):
+        return False
+    if citation.metadata.plaintiff or citation.metadata.defendant:
+        return False
+    start = citation.span()[0]
+    return start < previous_end or bool(_HISTORY.match(text[previous_end:start]))
 
 
 def _kind(citation: CitationBase) -> str:

@@ -108,3 +108,42 @@ def test_apostrophes_are_not_nested_quotes():
     )
     (zicherman,) = extract(text).citations
     assert zicherman.quotes == ["The carrier's duty and the passengers’ claims survive the stay."]
+
+
+def test_table_of_authorities_entries_are_skipped():
+    text = (
+        "TABLE OF AUTHORITIES Chambers v. NASCO, Inc., 501 U.S. 32 (1991) ............................ 13, 14 "
+        "ARGUMENT Courts have inherent power to sanction bad faith. Chambers v. NASCO, Inc., 501 U.S. 32, 46 (1991)."
+    )
+    extraction = extract(text)
+    (citation,) = extraction.citations
+    assert citation.pincite == "46"
+    assert extraction.table_entries == 1
+
+
+def test_subsequent_history_takes_the_case_name():
+    text = (
+        "Counsel who play a minor role are not sanctioned. De La Fuente v. DCI Telecomms., Inc., "
+        "269 F. Supp. 2d 229, 235 (S.D.N.Y.), aff'd and remanded, 82 F. App'x 723 (2d Cir. 2003)."
+    )
+    district, appeal = extract(text).citations
+    assert appeal.authority.case_name == district.authority.case_name == "De La Fuente v. DCI Telecomms., Inc."
+    assert appeal.authority.reporter_cites == ["82 F. App'x 723"]
+
+
+def test_id_after_a_record_cite_is_not_a_case_citation():
+    text = (
+        "Sanctions require bad faith. Rankin v. City of Niagara Falls, 293 F.R.D. 375, 390 (W.D.N.Y. 2013). "
+        "Bad faith must be shown clearly. Id. at 391. "
+        "He did not know the tool could invent cases. Schwartz Decl. ¶ 15. He regrets it. Id. at ¶ 29. "
+        "He acted in good faith. Id. at ¶ 30."
+    )
+    extraction = extract(text)
+    assert [(c.kind, c.pincite) for c in extraction.citations] == [("full", "390"), ("id", "391")]
+    assert extraction.record_references == 2
+
+
+def test_docket_numbers_leave_the_case_name():
+    text = "The court declined. Rivas v. Bowling Green Assocs., L.P., No. 13-CV-7812 PKC, 2014 WL 3694983 (S.D.N.Y. 2014)."
+    (citation,) = extract(text).citations
+    assert citation.authority.case_name == "Rivas v. Bowling Green Assocs., L.P."

@@ -64,7 +64,8 @@ def main() -> int:
 
     print(f"{filing['case_name']} ECF {filing['entry_number']}: "
           f"{len(rows)} case citations to {cases} cases, "
-          f"{extraction.non_case_citations} non-case citations skipped")
+          f"skipped {extraction.non_case_citations} non-case citations, {extraction.table_entries} "
+          f"table entries and {extraction.record_references} Id. cites to the record")
     print(f"{'#':>3} {'kind':5} {'case':3} {'pin':7} {'quoted':6} {'quotes':6} citation")
     for row in rows:
         cites = ", ".join(json.loads(row["reporter_cites"])) if row["reporter_cites"] else "unresolved"
