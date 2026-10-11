@@ -2,13 +2,15 @@
 
 All reporter cites in a filing go to CourtListener's citation lookup in one
 request. A cite that resolves to a case with the cited name passes both checks.
-Otherwise the case is searched by name, court and year, and a hit only counts
-if its court belongs to the system (federal or state) of the cited reporter:
+Otherwise the case is searched by name, court and year:
 
 - existence passes if either path finds the named case, and fails if neither does.
-- identity fails if the cite resolves to a differently named case. It is
-  unverifiable if the cite resolves to nothing, since an empty page in
-  CourtListener isn't proof the cite is wrong.
+- identity fails if the cite resolves to a differently named case, or if the
+  named case turns up somewhere the cite can't point: in the other court
+  system (a federal case cited to a state reporter), or in the same reporter
+  at a different page. Otherwise a cite that resolves to nothing is
+  unverifiable, since an empty page in CourtListener isn't proof the cite is
+  wrong.
 """
 
 from dataclasses import dataclass
@@ -80,6 +82,7 @@ def check_authority(
             reason = f"{cite} resolves to {_shorten(matched_name)} ({cluster.get('date_filed')})"
             return Finding("existence", PASS, reason, evidence), Finding("identity", PASS, reason, evidence)
 
+    existence, found = _search_by_name(api, authority)
     if resolved:
         others = [_cluster_summary(c) for _, c in resolved]
         identity = Finding(
@@ -89,6 +92,15 @@ def check_authority(
             f"{'; '.join(o['case_name'] for o in others)}, not {authority.case_name}",
             {**lookup_evidence, "clusters": others},
         )
+    elif found is not None and _reported_elsewhere(authority, found):
+        cites = ", ".join(found.get("citation") or []) or f"{found.get('court_id')}, {found.get('dateFiled')}"
+        identity = Finding(
+            "identity",
+            FAIL,
+            f"nothing at {', '.join(authority.reporter_cites)}; "
+            f"{_shorten(found['caseName'])} is reported at {cites}",
+            {**lookup_evidence, "found": _search_summary(found)},
+        )
     else:
         identity = Finding(
             "identity",
@@ -97,17 +109,44 @@ def check_authority(
                       for c, s in statuses.items()),
             lookup_evidence,
         )
-    return _search_by_name(api, authority), identity
+    return existence, identity
 
 
-def _search_by_name(api: CachedCourtListener, authority: Authority) -> Finding:
+def _reported_elsewhere(authority: Authority, found: dict) -> bool:
+    """CourtListener shows the named case where the cite can't point.
+
+    Either its court is in the other system from the cited reporter, or it is
+    reported in the same reporter at a different volume or page. A case that
+    simply lacks the cited reporter in CourtListener proves nothing.
+    """
+    if not court_system_fits(authority.reporter_cites, found.get("court_id")):
+        return True
+    found_cites = found.get("citation") or []
+    return any(
+        _reporter(found_cite) == _reporter(cite) and found_cite != cite
+        for cite in authority.reporter_cites
+        for found_cite in found_cites
+    )
+
+
+def _reporter(cite: str) -> str:
+    parts = cite.split(" ")
+    return " ".join(parts[1:-1])
+
+
+def _search_by_name(api: CachedCourtListener, authority: Authority) -> tuple[Finding, dict | None]:
+    """Existence by name, court and year, plus the case found, if any.
+
+    A hit in the other court system still shows a case by that name exists;
+    identity then decides whether the cite points at it.
+    """
     cited_parties = [p for p in parties(authority.case_name) if p]
     if not cited_parties:
         return Finding(
             "existence",
             UNVERIFIABLE,
             f"{authority.case_name!r} has no distinctive party name to search for",
-        )
+        ), None
     terms = cited_parties[0][:3] if len(cited_parties) == 1 else [p[0] for p in cited_parties]
     params: dict[str, Any] = {"type": "o", "q": f"caseName:({' AND '.join(terms)})"}
     if authority.court:
@@ -122,13 +161,12 @@ def _search_by_name(api: CachedCourtListener, authority: Authority) -> Finding:
     except BudgetExhausted:
         raise
     except CourtListenerError as exc:
-        return Finding("existence", UNVERIFIABLE, f"CourtListener search failed: {exc}", {"query": params})
-    matches = [
+        return Finding("existence", UNVERIFIABLE, f"CourtListener search failed: {exc}", {"query": params}), None
+    named = [
         r for r in results
-        if names_match(authority.case_name, r.get("caseName", ""))
-        and _year_fits(year, r.get("dateFiled"))
-        and court_system_fits(authority.reporter_cites, r.get("court_id"))
+        if names_match(authority.case_name, r.get("caseName", "")) and _year_fits(year, r.get("dateFiled"))
     ]
+    matches = sorted(named, key=lambda r: not court_system_fits(authority.reporter_cites, r.get("court_id")))
     evidence = {
         "source": "search",
         "query": params,
@@ -145,14 +183,14 @@ def _search_by_name(api: CachedCourtListener, authority: Authority) -> Finding:
             f"found {_shorten(found['caseName'])} ({found.get('court_id')}, {found.get('dateFiled')}) "
             "by name search",
             evidence,
-        )
+        ), found
     return Finding(
         "existence",
         FAIL,
         f"no case named {authority.case_name}{f' ({where})' if where else ''} "
         f"in CourtListener search; {len(results)} result{'' if len(results) == 1 else 's'} checked",
         evidence,
-    )
+    ), None
 
 
 def _matched_name(case_name: str, cluster: dict) -> str | None:

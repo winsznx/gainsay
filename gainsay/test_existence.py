@@ -100,15 +100,32 @@ def test_name_search_result_from_a_distant_year_does_not_count():
     assert existence.outcome == FAIL
 
 
-def test_namesake_from_the_other_court_system_does_not_count():
+def test_namesake_in_the_other_court_system_exists_but_is_not_where_cited():
     ehrlich = Authority(4, "Ehrlich v. American Airlines, Inc.", ["360 N.J. Super. 360"], "2003", None)
     api = FakeApi(
         [lookup_result("360 N.J. Super. 360", 404)],
-        [{"caseName": "Ehrlich v. American Airlines, Inc.", "court_id": "ca2", "dateFiled": "2004-03-08"}],
+        [{"caseName": "Ehrlich v. American Airlines, Inc.", "court_id": "ca2", "dateFiled": "2004-03-08",
+          "citation": ["360 F.3d 366"], "cluster_id": 785320}],
     )
-    existence, _ = check(api, ehrlich)
-    assert existence.outcome == FAIL
-    assert existence.evidence["candidates"][0]["court_id"] == "ca2"
+    existence, identity = check(api, ehrlich)
+    assert existence.outcome == PASS
+    assert existence.evidence["candidates"][0]["cluster_id"] == 785320
+    assert identity.outcome == FAIL
+    assert identity.reason == (
+        "nothing at 360 N.J. Super. 360; Ehrlich v. American Airlines, Inc. is reported at 360 F.3d 366"
+    )
+
+
+def test_same_reporter_at_another_page_is_wrong_but_a_missing_reporter_proves_nothing():
+    zicherman = Authority(1, "Zicherman v. Korean Air Lines Co.", ["516 F.3d 1237"], "2008", "ca11")
+    elsewhere = {"caseName": "Zicherman v. Korean Air Lines Co.", "court_id": "ca11", "dateFiled": "2008-02-01"}
+
+    moved = FakeApi([lookup_result("516 F.3d 1237", 404)], [{**elsewhere, "citation": ["517 F.3d 1"]}])
+    assert check(moved, zicherman)[1].outcome == FAIL
+
+    unknown = FakeApi([lookup_result("516 F.3d 1237", 404)], [{**elsewhere, "citation": ["2008 WL 123"]}])
+    existence, identity = check(unknown, zicherman)
+    assert (existence.outcome, identity.outcome) == (PASS, UNVERIFIABLE)
 
 
 def test_parallel_cite_resolving_is_enough():
