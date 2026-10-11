@@ -33,6 +33,7 @@ from gainsay.status import (
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ANSWER_KEY_PATH = REPO_ROOT / "scoring" / "mata_answer_key.json"
 SCORING_DIR = REPO_ROOT / "data" / "scoring"
+RESULTS_DIR = REPO_ROOT / "scoring" / "results"
 EVIDENCE_SCORE = 95
 # Only "Not found" says a case doesn't exist. Statuses are read in order, so
 # "Wrong case" always comes with a passed existence check.

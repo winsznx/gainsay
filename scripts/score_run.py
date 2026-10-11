@@ -16,7 +16,7 @@ from gainsay.ledger import connect, now
 from gainsay.report import load_run
 from gainsay.scoring import (
     ANSWER_KEY_PATH,
-    SCORING_DIR,
+    RESULTS_DIR,
     AnswerKeyError,
     fetch_answer_source,
     load_answer_key,
@@ -61,8 +61,8 @@ def main() -> int:
             for s in scores
         ],
     }
-    SCORING_DIR.mkdir(parents=True, exist_ok=True)
-    path = SCORING_DIR / f"run-{args.run_id}-score.json"
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    path = RESULTS_DIR / f"run-{args.run_id}-score.json"
     path.write_text(json.dumps(artifact, indent=2) + "\n")
 
     print(f"Run {args.run_id} ({report.run['version']}) against ECF {source['entry_number']}")
@@ -76,7 +76,7 @@ def main() -> int:
         f"{summary['true negative']} TN)"
     )
     print(f"full finding: {summary['agree']} agree, {summary['disagree']} disagree, {summary['undecided']} undecided")
-    print(f"saved {path.relative_to(SCORING_DIR.parent.parent)}")
+    print(f"saved {path.relative_to(RESULTS_DIR.parent.parent)}")
     return 0
 
 
