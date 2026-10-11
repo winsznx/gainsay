@@ -15,9 +15,9 @@ import sys
 from pathlib import Path
 
 from gainsay.cache import CachedCourtListener
+from gainsay.checker import CHECKS, Checker
 from gainsay.courtlistener import BudgetExhausted, CourtListenerError
-from gainsay.existence import Authority, Lookup, check_authority
-from gainsay.findings import UNVERIFIABLE, Finding
+from gainsay.existence import Authority
 from gainsay.ledger import (
     connect,
     finish_run,
@@ -31,26 +31,6 @@ from gainsay.version import run_version
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST_PATH = REPO_ROOT / "data" / "manifest.json"
-CHECKS = ("existence", "identity")
-
-
-class Checker:
-    def __init__(self, api: CachedCourtListener, authorities: dict[int, Authority]):
-        self._api = api
-        self._authorities = authorities
-        self._lookup = Lookup(api, list(authorities.values()))
-        self._by_authority: dict[int, tuple[Finding, Finding]] = {}
-
-    def check(self, citation: sqlite3.Row) -> list[Finding]:
-        authority_id = citation["authority_id"]
-        if authority_id is None:
-            reason = "short citation could not be tied to a full citation in this filing"
-            return [Finding(check, UNVERIFIABLE, reason) for check in CHECKS]
-        if authority_id not in self._by_authority:
-            self._by_authority[authority_id] = check_authority(
-                self._api, self._lookup, self._authorities[authority_id]
-            )
-        return list(self._by_authority[authority_id])
 
 
 def load_authorities(conn: sqlite3.Connection, filing_id: int) -> dict[int, Authority]:
@@ -102,7 +82,7 @@ def main() -> int:
     tracing = Tracing("check-citations")
     try:
         with tracing.span("gainsay.check_run", run_id=run_id, run_version=version, filing_id=filing["id"]):
-            checker = Checker(api, load_authorities(conn, filing["id"]))
+            checker = Checker(api, load_authorities(conn, filing["id"]), citations)
             for citation in citations:
                 if all((citation["id"], check) in done for check in CHECKS):
                     continue
@@ -153,11 +133,13 @@ def print_run(conn: sqlite3.Connection, run_id: int) -> None:
     for row in rows:
         entry = by_citation.setdefault(row["ordinal"], {"case": row["case_name"] or "-"})
         entry[row["check_name"]] = (row["outcome"], row["reason"])
+    print(f"{'#':>3} {'case':44} " + " ".join(f"{check:12}" for check in CHECKS))
     for ordinal, entry in by_citation.items():
-        existence, identity = entry["existence"], entry["identity"]
-        print(f"{ordinal:>3} {entry['case'][:48]:48} existence={existence[0]:12} identity={identity[0]}")
-        print(f"      existence: {existence[1]}")
-        print(f"      identity:  {identity[1]}")
+        outcomes = " ".join(f"{entry[check][0]:12}" for check in CHECKS)
+        print(f"{ordinal:>3} {entry['case'][:44]:44} {outcomes}")
+        for check in CHECKS:
+            if entry[check][0] != "not_applicable":
+                print(f"      {check}: {entry[check][1]}")
 
 
 if __name__ == "__main__":
