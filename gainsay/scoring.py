@@ -34,7 +34,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 ANSWER_KEY_PATH = REPO_ROOT / "scoring" / "mata_answer_key.json"
 SCORING_DIR = REPO_ROOT / "data" / "scoring"
 EVIDENCE_SCORE = 95
-FLAGGED_STATUSES = (NOT_FOUND, WRONG_CASE)
+# Only "Not found" says a case doesn't exist. Statuses are read in order, so
+# "Wrong case" always comes with a passed existence check.
+FLAGGED_STATUSES = (NOT_FOUND,)
 
 
 class AnswerKeyError(Exception):
@@ -43,7 +45,7 @@ class AnswerKeyError(Exception):
 
 # The statuses that agree with each court finding.
 EXPECTED_STATUSES = {
-    "does_not_exist": {NOT_FOUND, WRONG_CASE},
+    "does_not_exist": {NOT_FOUND},
     "does_not_exist_as_cited": {NOT_FOUND, WRONG_CASE},
     "quote_not_in_opinion": {QUOTE_NOT_IN_OPINION},
     "does_not_support": {DOESNT_SUPPORT},

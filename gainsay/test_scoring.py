@@ -71,6 +71,22 @@ def test_incomplete_case_is_undecided_unless_already_not_found():
     assert miller.agrees_with_court is True
 
 
+def test_wrong_case_is_not_a_claim_that_the_case_does_not_exist():
+    ehrlich = {"case_name": "Ehrlich v. American Airlines, Inc.", "cite": "360 N.J. Super. 360", "exists": True,
+               "court_finding": "does_not_support", "evidence": ""}
+    report = RunReport({"id": 1}, {}, [
+        citation(1, "Ehrlich v. American Airlines, Inc.", "Ehrlich v. American Airlines, Inc., 360 N.J. Super. 360",
+                 existence="pass", identity="fail", quotation="not_applicable", proposition="fail"),
+        citation(2, "Miller v. United Airlines, Inc.", "174 F.3d 366", existence="pass", identity="fail",
+                 quotation="not_applicable", proposition="fail"),
+    ])
+    ehrlich_score, miller_score = score_run(report, [ehrlich, MILLER])
+    assert ehrlich_score.outcome == "true negative"
+    assert ehrlich_score.agrees_with_court is False
+    assert miller_score.outcome == "false negative"
+    assert miller_score.agrees_with_court is False
+
+
 def test_answer_key_case_missing_from_run_is_an_error():
     report = RunReport({"id": 1}, {}, [citation(1, "Doe v. United States", "419 F.3d 1058", **ALL_PASS)])
     with pytest.raises(AnswerKeyError, match="174 F.3d 366"):
