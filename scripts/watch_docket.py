@@ -16,7 +16,7 @@ from pathlib import Path
 
 from gainsay.blocklist import BlocklistedDocument
 from gainsay.cache import CachedCourtListener
-from gainsay.courtlistener import CourtListenerClient, CourtListenerError
+from gainsay.courtlistener import BudgetExhausted, CourtListenerClient, CourtListenerError
 from gainsay.dockets import (
     DEFAULT_DOCKET_CONFIG,
     load_docket_config,
@@ -48,6 +48,9 @@ def main() -> int:
     try:
         docket = resolve_docket(conn, client, config)
         new = poll_entries(conn, client, docket)
+    except BudgetExhausted as exc:
+        print(f"paused before polling: {exc}", file=sys.stderr)
+        return 2
     except (CourtListenerError, FetchError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
