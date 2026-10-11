@@ -7,10 +7,13 @@ dependencies = [
     "anthropic>=1.13.0",
     "courts-db>=0.10.27",
     "eyecite>=2.7.8",
+    "fastapi>=0.143.0",
+    "jinja2>=3.1.6",
     "neatlogs>=1.4.26",
     "pdfplumber>=0.11.10",
     "rapidfuzz>=3.14.6",
     "requests>=2.34.2",
+    "uvicorn>=0.54.0",
 ]
 
 [build-system]
@@ -25,5 +28,6 @@ testpaths = ["gainsay"]
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "pytest>=9.1.1",
 ]

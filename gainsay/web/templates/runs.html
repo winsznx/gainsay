@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Check runs | Gainsay{% endblock %}
+{% block content %}
+<section class="runs">
+  <h1>Check runs</h1>
+  {% if rows %}
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Run</th>
+        <th scope="col">Filing</th>
+        <th scope="col">Result</th>
+        <th scope="col">Commit</th>
+        <th scope="col">Started</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for run, report in rows %}
+      <tr>
+        <td><a href="/runs/{{ run.id }}">Run {{ run.id }}</a></td>
+        <td><cite>{{ run.case_name }}</cite>, ECF {{ run.entry_number }}</td>
+        <td>
+          {% if run.status == "complete" %}{{ report.headline }}
+          {% else %}{{ run.status | capitalize }}{% if run.status_reason %}: {{ run.status_reason }}{% endif %}{% endif %}
+        </td>
+        <td><code>{{ run.version }}</code></td>
+        <td><time datetime="{{ run.started_at }}">{{ run.started_at[:16] | replace("T", " ") }} UTC</time></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No runs yet. Fetch a filing, extract its citations, then run <code>scripts/check_citations.py</code>.</p>
+  {% endif %}
+</section>
+{% endblock %}

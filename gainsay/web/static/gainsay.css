@@ -1,0 +1,201 @@
+:root {
+  --paper: #f4f6f8;
+  --sheet: #ffffff;
+  --ink: #1d2b3a;
+  --muted: #566372;
+  --rule: #d6dde4;
+
+  --not-found: #b3261e;
+  --wrong-case: #8a3a8a;
+  --quote: #a86400;
+  --doesnt-support: #4a43a3;
+  --unverifiable: #6b7785;
+  --verified: #2b7a4b;
+  --incomplete: #b9c3cc;
+
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 1rem/1.55 var(--sans);
+}
+
+a { color: inherit; text-underline-offset: 0.2em; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+code { font-size: 0.9em; }
+cite { font-family: var(--serif); font-style: italic; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+.masthead {
+  display: flex; align-items: baseline; gap: 1.25rem; flex-wrap: wrap;
+  padding: 1.1rem clamp(1rem, 4vw, 3rem);
+  border-bottom: 1px solid var(--rule);
+  background: var(--sheet);
+}
+.wordmark {
+  font: 600 1.35rem/1 var(--serif);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+.tagline { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+main {
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 2.5rem clamp(1rem, 4vw, 3rem) 4rem;
+}
+
+/* Filing summary */
+
+.docket { margin: 0 0 0.75rem; color: var(--muted); max-width: 48rem; }
+.docket cite { color: var(--ink); }
+
+.filing h1 {
+  margin: 0 0 0.6rem;
+  font: 600 clamp(2rem, 4.5vw, 2.9rem)/1.1 var(--serif);
+  letter-spacing: -0.015em;
+  max-width: 24ch;
+  text-wrap: balance;
+}
+.run-line { margin: 0 0 2rem; color: var(--muted); max-width: 48rem; }
+
+.strip {
+  display: flex; align-items: flex-end; gap: 4px;
+  height: 3.5rem;
+  margin: 0; padding: 0; list-style: none;
+}
+.seg { flex: 1 1 0; height: 100%; }
+.seg.nested { height: 58%; }
+.seg a {
+  display: block; height: 100%;
+  border-radius: 2px;
+  background: var(--seg-color);
+}
+.seg a:hover { filter: brightness(1.15); }
+.strip-note { margin: 0.6rem 0 1.5rem; color: var(--muted); font-size: 0.875rem; }
+
+.tally {
+  display: flex; flex-wrap: wrap; gap: 0.5rem 2rem;
+  margin: 0 0 3rem;
+}
+.tally div { display: flex; align-items: baseline; gap: 0.5rem; }
+.tally dt { order: 2; color: var(--muted); }
+.tally dd {
+  order: 1; margin: 0;
+  font: 600 1.4rem/1 var(--serif);
+  color: var(--seg-color);
+}
+
+/* Status colors, shared by the strip, tally and citation rows */
+
+.s-not-found-in-searched-sources { --seg-color: var(--not-found); }
+.s-wrong-case { --seg-color: var(--wrong-case); }
+.s-quote-not-in-opinion { --seg-color: var(--quote); }
+.s-doesnt-support-the-proposition { --seg-color: var(--doesnt-support); }
+.s-unverifiable { --seg-color: var(--unverifiable); }
+.s-verified { --seg-color: var(--verified); }
+.s-incomplete { --seg-color: var(--incomplete); }
+.seg.s-incomplete a {
+  background: repeating-linear-gradient(135deg, var(--incomplete) 0 4px, transparent 4px 8px);
+  box-shadow: inset 0 0 0 1px var(--incomplete);
+}
+
+/* Citation rows */
+
+.authorities h2 {
+  margin: 0 0 0.75rem;
+  font: 600 1.35rem/1.2 var(--serif);
+}
+
+.cite {
+  background: var(--sheet);
+  border-left: 5px solid var(--seg-color);
+  margin-bottom: 2px;
+}
+.cite summary {
+  display: grid;
+  grid-template-columns: 2.25rem 1fr minmax(9rem, auto);
+  gap: 0.25rem 1rem;
+  align-items: baseline;
+  padding: 0.85rem 1.1rem 0.85rem 0.9rem;
+  cursor: pointer;
+  list-style: none;
+}
+.cite summary::-webkit-details-marker { display: none; }
+.cite[open] summary { border-bottom: 1px solid var(--rule); }
+
+.ordinal { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.authority cite { display: block; font-size: 1.1rem; line-height: 1.35; }
+.as-cited { display: block; color: var(--muted); font-size: 0.875rem; overflow-wrap: anywhere; }
+.verdict {
+  font-weight: 500;
+  color: var(--seg-color);
+  text-align: right;
+}
+.s-incomplete .verdict { color: var(--muted); }
+.flag {
+  display: block;
+  font-weight: 400; font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.evidence { padding: 1.25rem 1.1rem 1.5rem 4.15rem; }
+.filing-text { margin: 0 0 1.25rem; max-width: 46rem; }
+.filing-text figcaption { color: var(--muted); font-size: 0.875rem; margin-bottom: 0.3rem; }
+.filing-text blockquote {
+  margin: 0;
+  padding-left: 1rem;
+  border-left: 2px solid var(--rule);
+  font: 400 1.02rem/1.65 var(--serif);
+}
+.aside { margin: 0.5rem 0 0 1rem; color: var(--muted); font-size: 0.875rem; }
+
+.checks { list-style: none; margin: 0; padding: 0; max-width: 46rem; }
+.checks li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 1rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--rule);
+}
+.check-name { font-weight: 500; }
+.outcome { text-align: right; }
+.o-pass .outcome { color: var(--verified); }
+.o-fail .outcome { color: var(--not-found); font-weight: 600; }
+.o-unverifiable .outcome, .o-not_applicable .outcome, .o-pending .outcome { color: var(--muted); }
+.reason, .excerpt { grid-column: 1 / -1; margin: 0.25rem 0 0; color: var(--muted); font-size: 0.925rem; }
+.excerpt q { font-family: var(--serif); color: var(--ink); }
+.source { margin: 1rem 0 0; }
+
+/* Runs list */
+
+.runs h1 { font: 600 2rem/1.15 var(--serif); margin: 0 0 1.5rem; }
+.runs table { width: 100%; border-collapse: collapse; background: var(--sheet); }
+.runs th, .runs td { text-align: left; padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--rule); vertical-align: baseline; }
+.runs th { font-weight: 500; color: var(--muted); font-size: 0.875rem; }
+.runs td:first-child, .runs td:nth-child(4) { white-space: nowrap; }
+.empty { color: var(--muted); }
+
+@media (max-width: 40rem) {
+  .cite summary { grid-template-columns: 1.75rem 1fr; }
+  .verdict { grid-column: 2; text-align: left; }
+  .evidence { padding-left: 1.1rem; }
+  .runs table, .runs thead, .runs tbody, .runs tr, .runs td { display: block; }
+  .runs thead { display: none; }
+  .runs td { border: 0; padding: 0.2rem 0.9rem; }
+  .runs tr { padding: 0.6rem 0; border-bottom: 1px solid var(--rule); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
