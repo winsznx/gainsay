@@ -5,6 +5,7 @@ import pytest
 from gainsay.courtlistener import (
     API_ROOT,
     STORAGE_ROOT,
+    WINDOW_MARGIN_SECONDS,
     Budget,
     BudgetExhausted,
     CourtListenerClient,
@@ -40,7 +41,7 @@ def test_minute_cap_waits_for_oldest_call_to_age_out(tmp_path):
     for _ in range(5):
         budget.acquire()
     budget.acquire()
-    assert clock.slept == [60]
+    assert clock.slept == [60 + WINDOW_MARGIN_SECONDS]
 
 
 def test_hour_cap_raises_with_retry_hint(tmp_path):
@@ -67,7 +68,7 @@ def test_budget_is_shared_through_the_file(tmp_path):
     for _ in range(5):
         make_budget(tmp_path, clock).acquire()
     make_budget(tmp_path, clock).acquire()
-    assert clock.slept == [60]
+    assert clock.slept == [60 + WINDOW_MARGIN_SECONDS]
 
 
 def test_calls_older_than_a_day_are_dropped(tmp_path):

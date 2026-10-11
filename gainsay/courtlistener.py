@@ -34,6 +34,11 @@ MINUTE = Limit("minute", 60, 5)
 HOUR = Limit("hour", 3600, 50)
 DAY = Limit("day", 86400, 125)
 
+# Call times are recorded just before sending, so the server sees each call a
+# little later. Waiting exactly until a call ages out of the minute window drew
+# 429s with 1-2 second retry hints, so the wait gets this much extra.
+WINDOW_MARGIN_SECONDS = 3
+
 
 class CourtListenerError(Exception):
     pass
@@ -85,7 +90,7 @@ class Budget:
 
         in_minute = [t for t in calls if now - t < self._minute.seconds]
         if len(in_minute) >= self._minute.max_calls:
-            wait = min(in_minute) + self._minute.seconds - now
+            wait = min(in_minute) + self._minute.seconds - now + WINDOW_MARGIN_SECONDS
             logger.warning("CourtListener minute budget full, waiting %.1fs", wait)
             self._sleep(wait)
             now = self._clock()

@@ -82,6 +82,25 @@ CREATE TABLE IF NOT EXISTS findings (
     UNIQUE (run_id, citation_id, check_name)
 );
 
+CREATE TABLE IF NOT EXISTS dockets (
+    id INTEGER PRIMARY KEY,
+    court TEXT NOT NULL,
+    docket_number TEXT NOT NULL,
+    case_name TEXT NOT NULL,
+    resolved_at TEXT NOT NULL,
+    UNIQUE (court, docket_number)
+);
+
+CREATE TABLE IF NOT EXISTS docket_entries (
+    docket_id INTEGER NOT NULL,
+    entry_number INTEGER NOT NULL,
+    date_filed TEXT,
+    date_created TEXT,
+    description TEXT NOT NULL,
+    first_seen_at TEXT NOT NULL,
+    PRIMARY KEY (docket_id, entry_number)
+);
+
 CREATE TABLE IF NOT EXISTS api_responses (
     id INTEGER PRIMARY KEY,
     method TEXT NOT NULL,
@@ -105,6 +124,12 @@ def connect(path: Path = DEFAULT_LEDGER_PATH) -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(SCHEMA)
     return conn
+
+
+def find_filing(conn: sqlite3.Connection, docket_id: int, entry_number: int) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM filings WHERE docket_id = ? AND entry_number = ?", (docket_id, entry_number)
+    ).fetchone()
 
 
 def upsert_filing(conn: sqlite3.Connection, manifest: dict) -> int:

@@ -1,124 +1,59 @@
-"""Check every citation in the fetched filing and record the findings in the ledger.
+"""Check every citation in a fetched filing and record the findings in the ledger.
 
 Each citation gets its own neatlogs span tagged with the run version. A
 CourtListener 429, an exhausted budget or a Claude rate limit pauses the run;
 --resume picks it up from the findings already recorded.
 
-    set -a; source .env; set +a; .venv/bin/python scripts/check_citations.py [--resume RUN_ID]
+    set -a; source .env; set +a
+    .venv/bin/python scripts/check_citations.py [--entry N] [--docket CONFIG] [--resume RUN_ID]
 """
 
 import argparse
-import json
 import logging
 import sqlite3
 import sys
 from pathlib import Path
 
-import anthropic
-
 from gainsay.cache import CachedCourtListener
-from gainsay.checker import CHECKS, Checker
-from gainsay.courtlistener import BudgetExhausted, CourtListenerError
-from gainsay.existence import Authority
-from gainsay.ledger import (
-    connect,
-    finish_run,
-    record_finding,
-    recorded_checks,
-    resume_run,
-    start_run,
-)
-from gainsay.proposition import ClaudeJudge
+from gainsay.checker import CHECKS
+from gainsay.dockets import DEFAULT_DOCKET_CONFIG, known_docket, load_docket_config
+from gainsay.ledger import connect, find_filing
+from gainsay.proposition import ClaudeJudge, MissingCredentials, anthropic_client
+from gainsay.runner import VersionMismatch, run_checks
 from gainsay.tracing import Tracing
 from gainsay.version import run_version
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-MANIFEST_PATH = REPO_ROOT / "data" / "manifest.json"
-
-
-def load_authorities(conn: sqlite3.Connection, filing_id: int) -> dict[int, Authority]:
-    rows = conn.execute("SELECT * FROM authorities WHERE filing_id = ?", (filing_id,))
-    return {
-        row["id"]: Authority(
-            id=row["id"],
-            case_name=row["case_name"],
-            reporter_cites=json.loads(row["reporter_cites"]),
-            year=row["year"],
-            court=row["court"],
-        )
-        for row in rows
-    }
+DEFAULT_ENTRY = 21
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--docket", type=Path, default=DEFAULT_DOCKET_CONFIG)
+    parser.add_argument("--entry", type=int, default=DEFAULT_ENTRY)
     parser.add_argument("--resume", type=int, metavar="RUN_ID")
     args = parser.parse_args()
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 
     conn = connect()
-    manifest = json.loads(MANIFEST_PATH.read_text())
-    filing = conn.execute(
-        "SELECT * FROM filings WHERE recap_document_id = ?", (manifest["recap_document_id"],)
-    ).fetchone()
-    if filing is None:
-        print("error: filing not in the ledger, run extract_citations.py first", file=sys.stderr)
+    docket = known_docket(conn, load_docket_config(args.docket))
+    filing = find_filing(conn, docket.docket_id, args.entry) if docket else None
+    if filing is None or filing["clean_text"] is None:
+        print(f"error: ECF {args.entry} has no extracted citations, run extract_citations.py first", file=sys.stderr)
+        return 1
+    try:
+        client = anthropic_client()
+    except MissingCredentials as exc:
+        print(f"error: {exc}", file=sys.stderr)
         return 1
 
-    client = anthropic.Anthropic()
-    if not (client.api_key or client.auth_token):
-        print("error: no Anthropic credentials, set ANTHROPIC_API_KEY in .env", file=sys.stderr)
-        return 1
-
-    version = run_version()
-    if args.resume:
-        run = resume_run(conn, args.resume)
-        if run["version"] != version:
-            print(f"error: run {run['id']} ran {run['version']}, code is now {version}", file=sys.stderr)
-            return 1
-        run_id = run["id"]
-    else:
-        run_id = start_run(conn, filing["id"], version)
-
-    citations = conn.execute(
-        "SELECT c.*, a.case_name FROM citations c LEFT JOIN authorities a ON a.id = c.authority_id "
-        "WHERE c.filing_id = ? ORDER BY c.ordinal",
-        (filing["id"],),
-    ).fetchall()
-    done = recorded_checks(conn, run_id)
     api = CachedCourtListener(conn)
     tracing = Tracing("check-citations")
     judge = ClaudeJudge(conn, tracing.wrap(client))
     try:
-        with tracing.span("gainsay.check_run", run_id=run_id, run_version=version, filing_id=filing["id"]):
-            checker = Checker(api, load_authorities(conn, filing["id"]), citations, judge)
-            for citation in citations:
-                if all((citation["id"], check) in done for check in CHECKS):
-                    continue
-                with tracing.span(
-                    "gainsay.check_citation",
-                    kind="CHAIN",
-                    run_id=run_id,
-                    run_version=version,
-                    citation=citation["ordinal"],
-                    case_name=citation["case_name"] or "unresolved",
-                ) as span:
-                    for finding in checker.check(citation):
-                        if (citation["id"], finding.check) in done:
-                            continue
-                        record_finding(
-                            conn, run_id, citation["id"], finding.check,
-                            finding.outcome, finding.reason, finding.evidence,
-                        )
-                        if span is not None:
-                            span.set_attribute(f"gainsay.{finding.check}", finding.outcome)
-        finish_run(conn, run_id, "complete")
-    except (BudgetExhausted, anthropic.RateLimitError) as exc:
-        finish_run(conn, run_id, "paused", str(exc))
-        print(f"paused: {exc}. Resume with --resume {run_id}", file=sys.stderr)
-        return 2
-    except CourtListenerError as exc:
-        finish_run(conn, run_id, "failed", str(exc))
+        result = run_checks(
+            conn, filing["id"], run_version(), api, judge, tracing, resume_run_id=args.resume
+        )
+    except (VersionMismatch, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     finally:
@@ -126,7 +61,13 @@ def main() -> int:
         print(f"CourtListener calls: {api.calls}, served from ledger: {api.cache_hits}")
         print(f"Claude calls: {judge.calls}, served from ledger: {judge.cache_hits}")
 
-    print_run(conn, run_id)
+    if result.status == "paused":
+        print(f"paused: {result.reason}. Resume with --resume {result.run_id}", file=sys.stderr)
+        return 2
+    if result.status == "failed":
+        print(f"error: {result.reason}", file=sys.stderr)
+        return 1
+    print_run(conn, result.run_id)
     return 0
 
 

@@ -1,40 +1,58 @@
-"""Extract the case citations from the fetched filing into the ledger.
+"""Extract the case citations from a fetched filing into the ledger.
 
-Reads data/manifest.json from fetch_filing.py. Makes no network calls.
-    .venv/bin/python scripts/extract_citations.py
+Makes no network calls. Re-extracting replaces the filing's citations, which
+deletes the findings of every run on it, so that needs --force.
+
+    .venv/bin/python scripts/extract_citations.py [--entry N] [--docket CONFIG] [--force]
 """
 
+import argparse
 import json
 import sys
 from pathlib import Path
 
+from gainsay.dockets import DEFAULT_DOCKET_CONFIG, known_docket, load_docket_config
 from gainsay.extract import extract
-from gainsay.ledger import connect, save_extraction, upsert_filing
+from gainsay.ledger import connect, find_filing, save_extraction
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-MANIFEST_PATH = REPO_ROOT / "data" / "manifest.json"
+DEFAULT_ENTRY = 21
 
 
 def main() -> int:
-    if not MANIFEST_PATH.exists():
-        print(f"error: {MANIFEST_PATH.relative_to(REPO_ROOT)} not found, run fetch_filing.py first", file=sys.stderr)
-        return 1
-    manifest = json.loads(MANIFEST_PATH.read_text())
-    extraction = extract((REPO_ROOT / manifest["text_path"]).read_text())
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--docket", type=Path, default=DEFAULT_DOCKET_CONFIG)
+    parser.add_argument("--entry", type=int, default=DEFAULT_ENTRY)
+    parser.add_argument("--force", action="store_true", help="replace citations that runs have findings for")
+    args = parser.parse_args()
 
     conn = connect()
-    filing_id = upsert_filing(conn, manifest)
-    save_extraction(conn, filing_id, extraction)
+    docket = known_docket(conn, load_docket_config(args.docket))
+    filing = find_filing(conn, docket.docket_id, args.entry) if docket else None
+    if filing is None:
+        print(f"error: ECF {args.entry} is not in the ledger, run fetch_filing.py first", file=sys.stderr)
+        return 1
+    runs = conn.execute("SELECT COUNT(*) FROM runs WHERE filing_id = ?", (filing["id"],)).fetchone()[0]
+    if runs and not args.force:
+        print(
+            f"error: ECF {args.entry} has {runs} check runs; re-extracting deletes their findings. "
+            "Pass --force to do it anyway.",
+            file=sys.stderr,
+        )
+        return 1
+
+    extraction = extract((REPO_ROOT / filing["text_path"]).read_text())
+    save_extraction(conn, filing["id"], extraction)
 
     rows = conn.execute(
         "SELECT c.ordinal, c.kind, c.pincite, c.in_quotation, c.quotes, a.ordinal AS case_ordinal, "
         "a.case_name, a.reporter_cites FROM citations c LEFT JOIN authorities a ON a.id = c.authority_id "
         "WHERE c.filing_id = ? ORDER BY c.ordinal",
-        (filing_id,),
+        (filing["id"],),
     ).fetchall()
-    cases = conn.execute("SELECT COUNT(*) FROM authorities WHERE filing_id = ?", (filing_id,)).fetchone()[0]
+    cases = conn.execute("SELECT COUNT(*) FROM authorities WHERE filing_id = ?", (filing["id"],)).fetchone()[0]
 
-    print(f"{manifest['case_name']} ECF {manifest['entry_number']}: "
+    print(f"{filing['case_name']} ECF {filing['entry_number']}: "
           f"{len(rows)} case citations to {cases} cases, "
           f"{extraction.non_case_citations} non-case citations skipped")
     print(f"{'#':>3} {'kind':5} {'case':3} {'pin':7} {'quoted':6} {'quotes':6} citation")

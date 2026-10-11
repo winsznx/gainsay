@@ -159,6 +159,17 @@ def check_proposition(
     )
 
 
+class MissingCredentials(Exception):
+    pass
+
+
+def anthropic_client() -> anthropic.Anthropic:
+    client = anthropic.Anthropic()
+    if not (client.api_key or client.auth_token):
+        raise MissingCredentials("no Anthropic credentials, set ANTHROPIC_API_KEY in .env")
+    return client
+
+
 class ClaudeJudge:
     """Asks Claude for a verdict, caching each exact request in the ledger.
 
