@@ -37,6 +37,10 @@ class Tracing:
         with context as span:
             yield span
 
+    def wrap(self, client: Any) -> Any:
+        """Let neatlogs capture a model client's calls, when tracing is on."""
+        return neatlogs.wrap(client) if self.enabled else client
+
     def close(self) -> None:
         if not self.enabled:
             return

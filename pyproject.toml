@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Checks the case citations in an opposing party's federal court filings."
 requires-python = ">=3.11,<3.14"
 dependencies = [
+    "anthropic>=1.13.0",
     "courts-db>=0.10.27",
     "eyecite>=2.7.8",
     "neatlogs>=1.4.26",

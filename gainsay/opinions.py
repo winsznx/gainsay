@@ -56,6 +56,12 @@ class OpinionText:
         return [(o, p) for o, p in self.pages if first_page < p <= first_page + MAX_OPINION_PAGES]
 
 
+def distinct_opinions(opinions: list[OpinionText]) -> list[OpinionText]:
+    """Drop "combined" copies when the cluster also has the split opinions they repeat."""
+    split = [op for op in opinions if not op.type.startswith("010")]
+    return split or opinions
+
+
 def fetch_cluster_opinions(api: CachedCourtListener, cluster_id: int) -> list[OpinionText]:
     params: dict[str, object] = {"cluster__id": cluster_id, "fields": OPINION_FIELDS}
     opinions = []

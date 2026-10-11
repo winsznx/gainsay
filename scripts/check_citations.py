@@ -1,8 +1,8 @@
 """Check every citation in the fetched filing and record the findings in the ledger.
 
 Each citation gets its own neatlogs span tagged with the run version. A
-CourtListener 429 or exhausted budget pauses the run; --resume picks it up
-from the findings already recorded.
+CourtListener 429, an exhausted budget or a Claude rate limit pauses the run;
+--resume picks it up from the findings already recorded.
 
     set -a; source .env; set +a; .venv/bin/python scripts/check_citations.py [--resume RUN_ID]
 """
@@ -13,6 +13,8 @@ import logging
 import sqlite3
 import sys
 from pathlib import Path
+
+import anthropic
 
 from gainsay.cache import CachedCourtListener
 from gainsay.checker import CHECKS, Checker
@@ -26,6 +28,7 @@ from gainsay.ledger import (
     resume_run,
     start_run,
 )
+from gainsay.proposition import ClaudeJudge
 from gainsay.tracing import Tracing
 from gainsay.version import run_version
 
@@ -62,6 +65,11 @@ def main() -> int:
         print("error: filing not in the ledger, run extract_citations.py first", file=sys.stderr)
         return 1
 
+    client = anthropic.Anthropic()
+    if not (client.api_key or client.auth_token):
+        print("error: no Anthropic credentials, set ANTHROPIC_API_KEY in .env", file=sys.stderr)
+        return 1
+
     version = run_version()
     if args.resume:
         run = resume_run(conn, args.resume)
@@ -80,9 +88,10 @@ def main() -> int:
     done = recorded_checks(conn, run_id)
     api = CachedCourtListener(conn)
     tracing = Tracing("check-citations")
+    judge = ClaudeJudge(conn, tracing.wrap(client))
     try:
         with tracing.span("gainsay.check_run", run_id=run_id, run_version=version, filing_id=filing["id"]):
-            checker = Checker(api, load_authorities(conn, filing["id"]), citations)
+            checker = Checker(api, load_authorities(conn, filing["id"]), citations, judge)
             for citation in citations:
                 if all((citation["id"], check) in done for check in CHECKS):
                     continue
@@ -104,7 +113,7 @@ def main() -> int:
                         if span is not None:
                             span.set_attribute(f"gainsay.{finding.check}", finding.outcome)
         finish_run(conn, run_id, "complete")
-    except BudgetExhausted as exc:
+    except (BudgetExhausted, anthropic.RateLimitError) as exc:
         finish_run(conn, run_id, "paused", str(exc))
         print(f"paused: {exc}. Resume with --resume {run_id}", file=sys.stderr)
         return 2
@@ -115,6 +124,7 @@ def main() -> int:
     finally:
         tracing.close()
         print(f"CourtListener calls: {api.calls}, served from ledger: {api.cache_hits}")
+        print(f"Claude calls: {judge.calls}, served from ledger: {judge.cache_hits}")
 
     print_run(conn, run_id)
     return 0

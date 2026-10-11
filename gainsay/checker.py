@@ -1,23 +1,26 @@
 """Run every check for each citation in a filing.
 
-Existence and identity are decided once per case. Quotation and pincite need
-the opinion text, which is fetched once per CourtListener cluster and only
-for citations that quote something or give a pincite.
+Existence and identity are decided once per case. Quotation, pincite and
+proposition need the opinion text, which is fetched once per CourtListener
+cluster.
 """
 
 import json
 import sqlite3
 from dataclasses import replace
 
+import anthropic
+
 from gainsay.cache import CachedCourtListener
 from gainsay.courtlistener import BudgetExhausted, CourtListenerError
 from gainsay.existence import Authority, Lookup, check_authority
 from gainsay.findings import PASS, UNVERIFIABLE, Finding
 from gainsay.opinions import OpinionText, fetch_cluster_opinions
-from gainsay.pincite import check_pincite, first_page, pin_reporter
+from gainsay.pincite import check_pincite, first_page, parse_pin, pin_reporter
+from gainsay.proposition import Judge, check_proposition
 from gainsay.quotes import check_quotes
 
-CHECKS = ("existence", "identity", "quotation", "pincite")
+CHECKS = ("existence", "identity", "quotation", "proposition", "pincite")
 
 
 class Checker:
@@ -26,8 +29,10 @@ class Checker:
         api: CachedCourtListener,
         authorities: dict[int, Authority],
         citations: list[sqlite3.Row],
+        judge: Judge,
     ):
         self._api = api
+        self._judge = judge
         self._authorities = authorities
         self._lookup = Lookup(api, list(authorities.values()))
         self._by_authority: dict[int, tuple[Finding, Finding]] = {}
@@ -44,6 +49,7 @@ class Checker:
                 Finding("existence", UNVERIFIABLE, reason),
                 Finding("identity", UNVERIFIABLE, reason),
                 check_quotes(quotes, [], None) if not quotes else Finding("quotation", UNVERIFIABLE, reason),
+                Finding("proposition", UNVERIFIABLE, reason),
                 check_pincite(pincite, None, []) if not pincite else Finding("pincite", UNVERIFIABLE, reason),
             ]
 
@@ -54,6 +60,7 @@ class Checker:
             existence,
             identity,
             self._quotation(quotes, cluster_id, reporter, existence),
+            self._proposition(citation, cluster_id, reporter, existence, identity),
             self._pincite(pincite, cluster_id, reporter, identity),
         ]
 
@@ -73,6 +80,30 @@ class Checker:
         if isinstance(opinions, str):
             return Finding("quotation", UNVERIFIABLE, opinions, {"cluster_id": cluster_id})
         finding = check_quotes(quotes, opinions, first_page(reporter))
+        return replace(finding, evidence={**finding.evidence, "cluster_id": cluster_id})
+
+    def _proposition(
+        self,
+        citation: sqlite3.Row,
+        cluster_id: int | None,
+        reporter: str,
+        existence: Finding,
+        identity: Finding,
+    ) -> Finding:
+        if cluster_id is None:
+            return Finding("proposition", UNVERIFIABLE, f"no opinion to compare against: {existence.reason}")
+        opinions = self._opinions_for(cluster_id)
+        if isinstance(opinions, str):
+            return Finding("proposition", UNVERIFIABLE, opinions, {"cluster_id": cluster_id})
+        pin = parse_pin(citation["pincite"]) if citation["pincite"] and identity.outcome == PASS else None
+        try:
+            finding = check_proposition(
+                citation["proposition"], opinions, first_page(reporter), pin, self._judge
+            )
+        except anthropic.RateLimitError:
+            raise
+        except anthropic.APIError as exc:
+            return Finding("proposition", UNVERIFIABLE, f"the model call failed: {exc}", {"cluster_id": cluster_id})
         return replace(finding, evidence={**finding.evidence, "cluster_id": cluster_id})
 
     def _pincite(

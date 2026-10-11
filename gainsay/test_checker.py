@@ -49,6 +49,7 @@ def citation(id, authority_id, kind, cite_text, pincite=None, quotes=()):
         "cite_text": cite_text,
         "pincite": pincite,
         "quotes": json.dumps(list(quotes)),
+        "proposition": "The question is one of state law.",
     }
 
 
@@ -63,22 +64,34 @@ CITATIONS = [
 ]
 
 
+def judge(system, user):
+    return {
+        "id": "msg_1",
+        "model": "claude-opus-5-5",
+        "stop_reason": "end_turn",
+        "verdict": {"verdict": "supports", "passage_ids": ["P1"], "reason": "r"},
+    }
+
+
 def outcomes(findings):
     return {f.check: f.outcome for f in findings}
 
 
 def test_checks_each_citation_and_fetches_each_cluster_once():
     api = FakeApi()
-    checker = Checker(api, {1: KAISER, 2: VARGHESE}, CITATIONS)
+    checker = Checker(api, {1: KAISER, 2: VARGHESE}, CITATIONS, judge)
 
     past_the_end, quoted, not_found = (checker.check(c) for c in CITATIONS)
 
     assert outcomes(past_the_end) == {
-        "existence": PASS, "identity": PASS, "quotation": NOT_APPLICABLE, "pincite": FAIL,
+        "existence": PASS, "identity": PASS, "quotation": NOT_APPLICABLE, "proposition": PASS, "pincite": FAIL,
     }
-    assert outcomes(quoted) == {"existence": PASS, "identity": PASS, "quotation": PASS, "pincite": PASS}
+    assert outcomes(quoted) == {
+        "existence": PASS, "identity": PASS, "quotation": PASS, "proposition": PASS, "pincite": PASS,
+    }
     assert "page 594" in quoted[2].reason
     assert outcomes(not_found) == {
-        "existence": FAIL, "identity": UNVERIFIABLE, "quotation": UNVERIFIABLE, "pincite": NOT_APPLICABLE,
+        "existence": FAIL, "identity": UNVERIFIABLE, "quotation": UNVERIFIABLE,
+        "proposition": UNVERIFIABLE, "pincite": NOT_APPLICABLE,
     }
     assert api.opinion_requests == 1
