@@ -1,11 +1,13 @@
-"""The SQLite ledger: filings, the cases they cite, and each citation occurrence.
+"""The SQLite ledger: filings, citations, check runs and their findings.
 
 Every number Gainsay reports is read back from here, so the ledger stores the
-evidence (cleaned text, spans, propositions, quotes) next to the results.
+evidence (cleaned text, spans, propositions, quotes, raw CourtListener
+responses) next to the results.
 """
 
 import json
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 
 from gainsay.extract import Extraction
@@ -57,7 +59,43 @@ CREATE TABLE IF NOT EXISTS citations (
     in_quotation INTEGER NOT NULL,
     UNIQUE (filing_id, ordinal)
 );
+
+CREATE TABLE IF NOT EXISTS runs (
+    id INTEGER PRIMARY KEY,
+    filing_id INTEGER NOT NULL REFERENCES filings(id) ON DELETE CASCADE,
+    version TEXT NOT NULL,
+    status TEXT NOT NULL,
+    status_reason TEXT,
+    started_at TEXT NOT NULL,
+    finished_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS findings (
+    id INTEGER PRIMARY KEY,
+    run_id INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    citation_id INTEGER NOT NULL REFERENCES citations(id) ON DELETE CASCADE,
+    check_name TEXT NOT NULL,
+    outcome TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    evidence TEXT NOT NULL,
+    checked_at TEXT NOT NULL,
+    UNIQUE (run_id, citation_id, check_name)
+);
+
+CREATE TABLE IF NOT EXISTS api_responses (
+    id INTEGER PRIMARY KEY,
+    method TEXT NOT NULL,
+    path TEXT NOT NULL,
+    params TEXT NOT NULL,
+    body TEXT NOT NULL,
+    fetched_at TEXT NOT NULL,
+    UNIQUE (method, path, params)
+);
 """
+
+
+def now() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def connect(path: Path = DEFAULT_LEDGER_PATH) -> sqlite3.Connection:
@@ -127,3 +165,55 @@ def save_extraction(conn: sqlite3.Connection, filing_id: int, extraction: Extrac
                     int(citation.in_quotation),
                 ),
             )
+
+
+def start_run(conn: sqlite3.Connection, filing_id: int, version: str) -> int:
+    with conn:
+        return conn.execute(
+            "INSERT INTO runs (filing_id, version, status, started_at) VALUES (?, ?, 'running', ?)",
+            (filing_id, version, now()),
+        ).lastrowid
+
+
+def finish_run(conn: sqlite3.Connection, run_id: int, status: str, reason: str | None = None) -> None:
+    with conn:
+        conn.execute(
+            "UPDATE runs SET status = ?, status_reason = ?, finished_at = ? WHERE id = ?",
+            (status, reason, now(), run_id),
+        )
+
+
+def resume_run(conn: sqlite3.Connection, run_id: int) -> sqlite3.Row:
+    run = conn.execute("SELECT * FROM runs WHERE id = ?", (run_id,)).fetchone()
+    if run is None:
+        raise ValueError(f"no run {run_id} in the ledger")
+    if run["status"] == "complete":
+        raise ValueError(f"run {run_id} is already complete")
+    with conn:
+        conn.execute(
+            "UPDATE runs SET status = 'running', status_reason = NULL, finished_at = NULL WHERE id = ?",
+            (run_id,),
+        )
+    return run
+
+
+def recorded_checks(conn: sqlite3.Connection, run_id: int) -> set[tuple[int, str]]:
+    rows = conn.execute("SELECT citation_id, check_name FROM findings WHERE run_id = ?", (run_id,))
+    return {(row["citation_id"], row["check_name"]) for row in rows}
+
+
+def record_finding(
+    conn: sqlite3.Connection,
+    run_id: int,
+    citation_id: int,
+    check_name: str,
+    outcome: str,
+    reason: str,
+    evidence: dict,
+) -> None:
+    with conn:
+        conn.execute(
+            "INSERT INTO findings (run_id, citation_id, check_name, outcome, reason, evidence, checked_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (run_id, citation_id, check_name, outcome, reason, json.dumps(evidence), now()),
+        )

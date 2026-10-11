@@ -28,9 +28,9 @@ class Tracing:
         self.enabled = True
 
     @contextmanager
-    def span(self, name: str, **attributes: Any) -> Iterator[Any]:
+    def span(self, name: str, kind: str = "WORKFLOW", **attributes: Any) -> Iterator[Any]:
         context = (
-            neatlogs.trace(name, kind="WORKFLOW", **attributes)
+            neatlogs.trace(name, kind=kind, **attributes)
             if self.enabled
             else nullcontext()
         )

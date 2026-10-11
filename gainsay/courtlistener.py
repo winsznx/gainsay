@@ -129,38 +129,45 @@ class CourtListenerClient:
         self._timeout = timeout
         self.calls = 0
 
-    def get_json(self, path: str, params: dict[str, Any] | None = None) -> dict:
-        response = self._get(
-            API_ROOT + path.lstrip("/"),
-            params=params,
-            headers={"Authorization": f"Token {self._token}"},
-        )
-        return response.json()
+    def get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        return self._api("GET", path, params=params).json()
+
+    def post_json(self, path: str, data: dict[str, Any]) -> Any:
+        return self._api("POST", path, data=data).json()
 
     def download(self, filepath_local: str) -> bytes:
         # Storage is a public bucket on another host, so the token stays home.
-        return self._get(storage_url(filepath_local)).content
+        return self._request("GET", storage_url(filepath_local)).content
 
-    def _get(
+    def _api(self, method: str, path: str, **kwargs: Any) -> requests.Response:
+        return self._request(
+            method,
+            API_ROOT + path.lstrip("/"),
+            headers={"Authorization": f"Token {self._token}"},
+            **kwargs,
+        )
+
+    def _request(
         self,
+        method: str,
         url: str,
-        params: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> requests.Response:
         self._budget.acquire()
         self.calls += 1
         try:
-            response = self._session.get(
-                url, params=params, headers=headers, timeout=self._timeout
+            response = self._session.request(
+                method, url, headers=headers, timeout=self._timeout, **kwargs
             )
         except requests.RequestException as exc:
-            raise CourtListenerError(f"GET {url} failed: {exc}") from exc
+            raise CourtListenerError(f"{method} {url} failed: {exc}") from exc
 
         if response.status_code == 429:
             raise BudgetExhausted("server", _retry_after(response))
         if not response.ok:
             raise CourtListenerError(
-                f"GET {response.url} returned {response.status_code}: {response.text[:300]}"
+                f"{method} {response.url} returned {response.status_code}: {response.text[:300]}"
             )
         return response
 

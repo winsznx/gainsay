@@ -97,8 +97,10 @@ class FakeSession:
         self._responses = list(responses)
         self.requests: list[dict] = []
 
-    def get(self, url, params=None, headers=None, timeout=None):
-        self.requests.append({"url": url, "params": params, "headers": headers})
+    def request(self, method, url, headers=None, timeout=None, params=None, data=None):
+        self.requests.append(
+            {"method": method, "url": url, "params": params, "data": data, "headers": headers}
+        )
         return self._responses.pop(0)
 
 
@@ -123,6 +125,15 @@ def test_api_calls_send_token_and_storage_downloads_do_not(tmp_path):
     assert storage["url"] == STORAGE_ROOT + "recap/a.pdf"
     assert storage["headers"] is None
     assert client.calls == 2
+
+
+def test_post_sends_form_data_with_token(tmp_path):
+    client, session = make_client(tmp_path, FakeResponse(payload=[]))
+    assert client.post_json("citation-lookup/", {"text": "925 F.3d 1339"}) == []
+    (request,) = session.requests
+    assert request["method"] == "POST"
+    assert request["data"] == {"text": "925 F.3d 1339"}
+    assert request["headers"] == {"Authorization": "Token secret"}
 
 
 def test_server_429_raises_without_retrying(tmp_path):
