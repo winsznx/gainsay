@@ -32,6 +32,8 @@ Each citation stores five independent findings: existence, identity, quotation, 
 5. Unverifiable
 6. Verified
 
+A failed pincite never changes the primary status. It is shown as a flag next to it.
+
 ## Conventions
 
 - Tests sit next to the module they cover. Run them before every commit.
