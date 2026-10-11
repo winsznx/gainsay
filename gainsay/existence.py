@@ -75,6 +75,8 @@ def check_authority(
         "statuses": statuses,
         "api_response_ids": lookup.response_ids,
     }
+    if not authority.case_name.strip():
+        return _nameless(authority, resolved, statuses, lookup_evidence)
     for cite, cluster in resolved:
         matched_name = _matched_name(authority.case_name, cluster)
         if matched_name:
@@ -110,6 +112,29 @@ def check_authority(
             lookup_evidence,
         )
     return existence, identity
+
+
+def _nameless(
+    authority: Authority,
+    resolved: list[tuple[str, dict]],
+    statuses: dict[str, int | None],
+    lookup_evidence: dict,
+) -> tuple[Finding, Finding]:
+    """A cite the filing gives without a case name can't be matched by name."""
+    no_name = "the filing gives no case name for this cite"
+    if resolved:
+        cite, cluster = resolved[0]
+        evidence = {**lookup_evidence, "cite": cite, "cluster": _cluster_summary(cluster)}
+        name = _shorten(cluster.get("case_name") or cluster.get("case_name_full") or "a case")
+        return (
+            Finding("existence", PASS, f"{cite} resolves to {name} ({cluster.get('date_filed')})", evidence),
+            Finding("identity", UNVERIFIABLE, f"{no_name}, so {name} can't be compared", evidence),
+        )
+    unresolved = "; ".join(
+        _UNRESOLVED_REASONS.get(s, _UNRESOLVED_REASONS[None]).format(cite=c) for c, s in statuses.items()
+    )
+    reason = f"{no_name} and {unresolved}"
+    return Finding("existence", UNVERIFIABLE, reason, lookup_evidence), Finding("identity", UNVERIFIABLE, reason, lookup_evidence)
 
 
 def _reported_elsewhere(authority: Authority, found: dict) -> bool:

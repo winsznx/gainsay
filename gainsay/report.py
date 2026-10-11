@@ -83,6 +83,8 @@ class RunReport:
     @property
     def headline(self) -> str:
         total = len(self.citations)
+        if total == 0:
+            return "This filing cites no cases."
         incomplete = self.status_counts.get(INCOMPLETE, 0)
         problems = self.problem_count
         if problems:

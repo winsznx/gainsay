@@ -139,3 +139,14 @@ def test_parallel_cite_resolving_is_enough():
     existence, identity = check(api, kaiser)
     assert (existence.outcome, identity.outcome) == (PASS, PASS)
     assert existence.evidence["cite"] == "88 S. Ct. 1753"
+
+
+def test_nameless_cite_is_not_called_the_wrong_case():
+    nameless = Authority(5, "", ["82 F. App'x 723"], "2003", "ca2")
+    api = FakeApi([lookup_result("82 F. App'x 723", 200, [cluster("De La Fuente v. DCI Telecommunications, Inc.")])])
+    existence, identity = check(api, nameless)
+    assert (existence.outcome, identity.outcome) == (PASS, UNVERIFIABLE)
+    assert "no case name" in identity.reason
+
+    missing = FakeApi([lookup_result("82 F. App'x 723", 404)])
+    assert [f.outcome for f in check(missing, nameless)] == [UNVERIFIABLE, UNVERIFIABLE]

@@ -42,3 +42,20 @@ def test_different_parties_do_not_match(cited, found):
 def test_names_with_only_generic_words_fall_back_to_whole_name():
     assert names_match("United States v. United States", "United States v. United States")
     assert not names_match("People v. State", "United States v. America")
+
+
+@pytest.mark.parametrize(
+    ("cited", "found"),
+    [
+        ("De La Fuente v. DCI Telecomms., Inc.", "De La Fuente v. DCI Telecommunications, Inc."),
+        ("Advanced Battery Techs., Inc. v. Zhiguo Fu", "Advanced Battery Technologies, Inc. v. Zhiguo Fu"),
+        ("Olive Grp. N. Am. LLC v. Afghanistan Int'l Bank", "Olive Group North America LLC v. Afghanistan International Bank"),
+        ("Huebner v. Midland Credit Mgmt., Inc.", "Huebner v. Midland Credit Management, Inc."),
+    ],
+)
+def test_bluebook_abbreviations_match_the_words_they_shorten(cited, found):
+    assert names_match(cited, found)
+
+
+def test_short_abbreviation_prefixes_do_not_match_everything():
+    assert not names_match("Ash v. United States", "Ashcroft v. United States")

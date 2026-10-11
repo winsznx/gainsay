@@ -48,3 +48,8 @@ def test_list_runs_and_missing_run(tmp_path):
     (run,) = list_runs(conn)
     assert run["id"] == run_id and run["case_name"] == "Mata v. Avianca, Inc."
     assert load_run(conn, 999) is None
+
+
+def test_filing_without_case_citations_says_so():
+    from gainsay.report import RunReport
+    assert RunReport({"id": 1}, {}, []).headline == "This filing cites no cases."
