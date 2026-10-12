@@ -25,6 +25,17 @@
   </ol>
   <p class="strip-note">One bar per citation, in filing order. Short bars sit inside a passage the filing quotes from another case.</p>
 
+  {% if report.traces %}
+  <div class="traces">
+    <p>neatlogs traces for this run, one per attempt:</p>
+    <ol>
+      {% for trace in report.traces %}
+      <li><code>{{ trace.trace_id }}</code>, {{ trace.outcome or "running" }}{% if trace.reason %}: {{ trace.reason }}{% endif %}</li>
+      {% endfor %}
+    </ol>
+  </div>
+  {% endif %}
+
   <dl class="tally">
     {% for status, count in report.status_counts.items() %}
     <div class="s-{{ status | status_slug }}"><dt>{{ status }}</dt><dd>{{ count }}</dd></div>

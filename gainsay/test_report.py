@@ -43,6 +43,16 @@ def test_report_derives_status_flags_and_links_from_findings(tmp_path):
     assert "clean_text" not in report.filing
 
 
+def test_report_lists_each_attempt_trace(tmp_path):
+    from gainsay.ledger import record_trace
+    conn, run_id = make_run(tmp_path)
+    record_trace(conn, run_id, "a" * 32)
+    record_trace(conn, run_id, "a" * 32, "paused", "CourtListener hour budget exhausted")
+    record_trace(conn, run_id, "b" * 32, "complete")
+    traces = load_run(conn, run_id).traces
+    assert [(t["trace_id"][0], t["outcome"]) for t in traces] == [("a", "paused"), ("b", "complete")]
+
+
 def test_list_runs_and_missing_run(tmp_path):
     conn, run_id = make_run(tmp_path)
     (run,) = list_runs(conn)

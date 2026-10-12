@@ -82,6 +82,10 @@ main {
   background: var(--seg-color);
 }
 .seg a:hover { filter: brightness(1.15); }
+.traces { margin: 0 0 1.5rem; color: var(--muted); font-size: 0.875rem; }
+.traces p { margin: 0 0 0.25rem; }
+.traces ol { margin: 0; padding-left: 1.25rem; }
+.traces code { color: var(--ink); overflow-wrap: anywhere; }
 .strip-note { margin: 0.6rem 0 1.5rem; color: var(--muted); font-size: 0.875rem; }
 
 .tally {

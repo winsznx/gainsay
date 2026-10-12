@@ -69,6 +69,7 @@ class RunReport:
     run: dict[str, Any]
     filing: dict[str, Any]
     citations: list[CitationReport]
+    traces: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def status_counts(self) -> dict[str, int]:
@@ -136,4 +137,9 @@ def load_run(conn: sqlite3.Connection, run_id: int) -> RunReport | None:
             finding["outcome"], finding["reason"], json.loads(finding["evidence"])
         )
     filing_fields = {k: filing[k] for k in filing.keys() if k != "clean_text"}
-    return RunReport(dict(run), filing_fields, list(citations.values()))
+    traces = [
+        dict(row) for row in conn.execute(
+            "SELECT * FROM run_traces WHERE run_id = ? ORDER BY started_at", (run_id,)
+        )
+    ]
+    return RunReport(dict(run), filing_fields, list(citations.values()), traces)
