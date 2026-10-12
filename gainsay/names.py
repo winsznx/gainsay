@@ -18,7 +18,7 @@ from rapidfuzz import fuzz
 
 _GENERIC = frozenset(
     "v vs in re the of and a an et al ex rel matter estate inc co corp corporation company "
-    "ltd llc llp lp plc sa na united states america usa us people state commonwealth".split()
+    "ltd llc llp lp plc sa na united states america usa us people state commonwealth ii iii iv".split()
 )
 _PARTY_SEPARATOR = re.compile(r"\s+v(?:s)?\.?\s+", re.I)
 _TOKEN_SIMILARITY = 85
@@ -37,8 +37,21 @@ _CONTRACTIONS = {
     "mkt": "market", "pharm": "pharmaceutical", "bldg": "building", "assur": "assurance", "ent": "entertainment",
     "indem": "indemnity", "transp": "transportation", "tech": "technology", "techs": "technologies",
     "telecomm": "telecommunication", "telecomms": "telecommunications", "corr": "correctional",
-    "fed": "federal", "sav": "savings", "ry": "railway", "r.r": "railroad", "rr": "railroad",
+    "fed": "federal", "sav": "savings", "ry": "railroad", "rwy": "railroad", "railway": "railroad",
+    "r.r": "railroad", "rr": "railroad", "res": "resources", "def": "defense", "socy": "society",
+    "soc": "society", "chas": "charles", "bd": "board", "bds": "boards", "cmty": "community",
+    "dir": "director", "div": "division", "gov": "government", "hwy": "highway", "lab": "labor",
+    "mun": "municipal", "org": "organization", "twp": "township", "fid": "fidelity", "guar": "guaranty",
+    "cas": "casualty", "mem": "memorial", "ret": "retirement", "bros": "brothers",
+    "cal": "california", "tex": "texas", "fla": "florida", "pa": "pennsylvania", "ga": "georgia",
+    "la": "louisiana", "md": "maryland", "va": "virginia", "mo": "missouri", "ky": "kentucky",
+    "ala": "alabama", "ark": "arkansas", "kan": "kansas", "del": "delaware", "haw": "hawaii",
+    "ind": "indiana", "nev": "nevada", "neb": "nebraska", "wyo": "wyoming", "vt": "vermont",
+    "ill": "illinois",
 }
+# "R. Co." and "R.R." stand for railroad; the single letter would otherwise be dropped.
+_RAILROAD = re.compile(r"\br\.\s*(?:r\.|co\b)")
+_MAX_ACRONYM = 4
 _PARTY_COVERAGE = 0.6
 _SINGLE_PARTY_COVERAGE = 2 / 3
 
@@ -49,13 +62,21 @@ def parties(name: str) -> list[list[str]]:
 
 def names_match(cited: str, found: str) -> bool:
     cited_parties = [p for p in parties(cited) if p]
+    found_parties = parties(found)
     found_tokens = [
         token
-        for party in parties(found)
+        for party in found_parties
         for token in party + [a + b for a, b in zip(party, party[1:])]
     ]
     if not cited_parties or not found_tokens:
         return fuzz.token_sort_ratio(cited.lower(), found.lower()) >= 90
+    # "GE" for "General Electric": initials of consecutive words in a found party.
+    found_tokens += [
+        "".join(w[0] for w in party[i : i + n])
+        for party in found_parties
+        for n in range(2, _MAX_ACRONYM + 1)
+        for i in range(len(party) - n + 1)
+    ]
     coverage = _SINGLE_PARTY_COVERAGE if len(cited_parties) == 1 else _PARTY_COVERAGE
     found_initials = {_initials(part) for part in _PARTY_SEPARATOR.split(found)}
     return all(
@@ -90,6 +111,7 @@ def _same_word(a: str, b: str) -> bool:
 
 
 def _distinctive(text: str) -> list[str]:
-    words = re.sub(r"[^a-z0-9]+", " ", re.sub(r"['’]", "", text.lower())).split()
+    text = _RAILROAD.sub("railroad ", text.lower())
+    words = re.sub(r"[^a-z0-9]+", " ", re.sub(r"['’]", "", text)).split()
     words = [_CONTRACTIONS.get(w, w) for w in words]
     return [w for w in words if len(w) > 1 and w not in _GENERIC]

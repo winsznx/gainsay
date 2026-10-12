@@ -88,3 +88,30 @@ def test_acronym_must_spell_the_other_party():
 )
 def test_short_bluebook_abbreviations_match(cited, found):
     assert names_match(cited, found)
+
+
+def test_bluebook_abbreviations_and_acronyms_match_the_full_caption():
+    pairs = [
+        ("Chevron U.S.A. v. Natural Res. Def. Council", "Chevron U. S. A. Inc. v. Natural Resources Defense Council, Inc."),
+        ("Soc’y of the Holy Transfiguration Monastery, Inc. v. Archbishop Gregory of Denver",
+         "Society of the Holy Transfiguration Monastery, Inc. v. Archbishop Gregory of Denver, Colorado"),
+        ("G. D. Searle & Co. v. Charles Pfizer & Co.", "G. D. Searle & Co. v. Chas. Pfizer & Co., Inc."),
+        ("Picking v. Pennsylvania Railway", "Picking v. Pennsylvania R. Co."),
+        ("Columbia Steel Casting Co. v. Portland GE", "Columbia Steel Casting Co. v. Portland General Electric Co."),
+        ("Cook, Perkiss & Liehe, Inc. v. N. Cal. Collection Serv., Inc.",
+         "Cook, Perkiss And Liehe, Inc. v. Northern California Collection Service Inc."),
+        ("Local Joint Exec. Bd. of Culinary/Bartender Trust Fund v. Las Vegas Sands, Inc.",
+         "Local Joint Executive Board of Culinary/Bartender Trust Fund v. Las Vegas Sands, Inc."),
+    ]
+    for cited, found in pairs:
+        assert names_match(cited, found), cited
+
+
+def test_a_different_case_or_a_misspelled_party_still_does_not_match():
+    assert not names_match("Spinella v. Pearce", "Ricardo Jalil v. Avdel Corporation")
+    assert not names_match("Sims v. Aherns", "Sims v. Ahrens")
+    assert not names_match("Vela v. City of Houston", "United States v. Andreas")
+
+
+def test_a_numbered_short_form_matches_its_case():
+    assert names_match("Ezell II", "Ezell v. City of Chicago")
