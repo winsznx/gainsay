@@ -163,6 +163,15 @@
       </tbody>
     </table>
   </div>
+  {% set control = (docket.checked | selectattr("role", "equalto", "control") | list | first) if docket else none %}
+  {% if control and control.report.run.status == "complete" %}
+  {% set counts = control.report.status_counts %}
+  <p class="ledger-note">
+    The control is the defense's own motion memorandum, a brief with no known fabrications (ECF {{ control.entry_number }}, run {{ control.report.run.id }}):
+    {{ counts.get("Verified", 0) }} of {{ control.report.citations | length }} citations verified and
+    {{ control.report.problem_count }} flagged, each with the passages it was judged on.
+  </p>
+  {% endif %}
   {% if missed %}
   <p class="ledger-note">
     The other {{ missed }} case{{ "s" if missed != 1 }} the court found don't exist {{ "are" if missed != 1 else "is" }} cited only to Westlaw,

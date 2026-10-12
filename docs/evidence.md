@@ -21,7 +21,10 @@ One trace per run attempt, a `gainsay.check_run` workflow span with one `gainsay
 
 | Run | What it is | Trace |
 |---|---|---|
-| 43 | Final ECF 21 run, replayed from the ledger | `2dcdf212e63c0af29abea54ff3acbe8f` |
+| 47 | Final ECF 21 run, with the Caselaw Access Project as a second source and no CourtListener calls | `9dd695203cf90724f40ffc8ede51fa4c` |
+| 46 | Healthy control ECF 18, all 50 citations, after the control's fixes | `1c61776418e5d0b1a5bb160207b778ea` |
+| 45 | Healthy control ECF 18 before those fixes | `87606e6faca34cda955a327f68069c34` |
+| 43 | ECF 21 replayed from the ledger, zero calls | `2dcdf212e63c0af29abea54ff3acbe8f` |
 | 36 | Simulated outage after 5 citations, then the resumed attempt | `03f424545ef1a0c86acb77b2ada29f0b`, `c6cb21331eeb15d38cce665043584055` |
 | 37 | Simulated crash after 6 citations, then the resumed attempt | `d23f57a558dc28b262565cda5d4b44a4`, `5bab4ca29c1738f3cea38ffc5d19463d` |
 | 42 | Healthy control ECF 18, paused by the real daily quota | `8e1c90fdb9909ea2f1d6cdcd6737754d` |
@@ -44,7 +47,7 @@ The forecast has cash bottoming out at −$53.20 in July 2027 and turning positi
 
 - **Simulated outage:** run 36 paused after 5 citations ("simulated CourtListener outage"), and the next attempt resumed from the ledger with zero repeat calls.
 - **Simulated crash:** run 37's process was killed after 6 citations; the next attempt resumed the same run.
-- **Real quota:** the watcher paused at CourtListener's hourly limit and resumed on the next attempt; the healthy control paused at the daily limit (runs 41 and 42) with the refill time on its run page.
+- **Real quota:** the watcher paused at CourtListener's hourly limit and resumed on the next attempt; the healthy control paused at the daily limit (runs 41 and 42) with the refill time on its run page. With the quota spent, run 46 was started with `--courtlistener offline` and finished all 50 control citations from the ledger and the Caselaw Access Project, with no CourtListener calls.
 - **Real network failure:** the held-out benchmark run lost its connection mid-lookup; the client now retries dropped connections and 5xx errors three times with backoff (`232a7d3`), and the rerun finished.
 
 ## You built in public
