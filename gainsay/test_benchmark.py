@@ -25,3 +25,5 @@ def test_subset_is_seeded_and_ordered():
     first = [e.index for e in subset(excerpts, 100, seed=7)]
     assert first == [e.index for e in subset(excerpts, 100, seed=7)]
     assert first == sorted(first) and len(set(first)) == 100
+    held_out = [e.index for e in subset(excerpts, 100, seed=8, exclude=frozenset(first))]
+    assert not set(held_out) & set(first)

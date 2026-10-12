@@ -139,6 +139,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--size", type=int, default=100)
     parser.add_argument("--seed", type=int, default=20261012)
+    parser.add_argument("--held-out-from", type=int, metavar="DEV_SEED",
+                        help="draw a subset disjoint from the development subset with this seed")
     args = parser.parse_args()
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
     if not DATA.exists():
@@ -146,7 +148,11 @@ def main() -> int:
         return 1
 
     conn = connect()
-    excerpts = subset(load_excerpts(DATA), args.size, args.seed)
+    all_excerpts = load_excerpts(DATA)
+    exclude = frozenset()
+    if args.held_out_from is not None:
+        exclude = frozenset(e.index for e in subset(all_excerpts, args.size, args.held_out_from))
+    excerpts = subset(all_excerpts, args.size, args.seed, exclude)
     gainsay, lookup_only, courtlistener_calls = system_arms(conn, excerpts)
     try:
         no_tools, claude_calls, usage = no_tools_arm(conn, excerpts)
@@ -159,7 +165,13 @@ def main() -> int:
     artifact = {
         "benchmark": "LePhantomCite eval split (arXiv 2606.21155), citation-level error types only",
         "in_scope_types": list(IN_SCOPE),
-        "subset": {"size": len(excerpts), "seed": args.seed, "indices": [e.index for e in excerpts]},
+        "subset": {
+            "size": len(excerpts),
+            "seed": args.seed,
+            "role": "held-out" if exclude else "development",
+            "disjoint_from_seed": args.held_out_from,
+            "indices": [e.index for e in excerpts],
+        },
         "scored_at": now(),
         "courtlistener_calls_this_run": courtlistener_calls,
         "claude_calls_this_run": claude_calls,
@@ -173,7 +185,7 @@ def main() -> int:
         "predictions": {"gainsay": gainsay, "lookup-only": lookup_only, "no-tools": no_tools},
     }
     RESULTS.mkdir(parents=True, exist_ok=True)
-    path = RESULTS / f"lephantomcite-n{len(excerpts)}-seed{args.seed}.json"
+    path = RESULTS / f"lephantomcite-{'heldout' if exclude else 'dev'}-n{len(excerpts)}-seed{args.seed}.json"
     path.write_text(json.dumps(artifact, indent=2) + "\n")
 
     print(f"LePhantomCite eval subset: {len(excerpts)} excerpts (seed {args.seed}), types {', '.join(IN_SCOPE)}")

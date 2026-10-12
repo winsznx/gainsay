@@ -1,0 +1,527 @@
+{
+  "benchmark": "LePhantomCite eval split (arXiv 2606.21155), citation-level error types only",
+  "in_scope_types": [
+    "non_existent_citation",
+    "case_name_mismatch"
+  ],
+  "subset": {
+    "size": 100,
+    "seed": 20261012,
+    "indices": [
+      0,
+      2,
+      4,
+      12,
+      14,
+      17,
+      20,
+      22,
+      25,
+      31,
+      32,
+      35,
+      36,
+      38,
+      40,
+      41,
+      42,
+      44,
+      45,
+      46,
+      48,
+      54,
+      58,
+      64,
+      65,
+      72,
+      78,
+      84,
+      86,
+      87,
+      94,
+      97,
+      99,
+      113,
+      115,
+      117,
+      118,
+      119,
+      130,
+      131,
+      135,
+      141,
+      149,
+      150,
+      161,
+      162,
+      164,
+      172,
+      175,
+      185,
+      196,
+      200,
+      201,
+      205,
+      207,
+      208,
+      210,
+      211,
+      217,
+      220,
+      223,
+      230,
+      232,
+      234,
+      239,
+      241,
+      244,
+      247,
+      256,
+      261,
+      266,
+      270,
+      271,
+      276,
+      279,
+      281,
+      284,
+      286,
+      287,
+      291,
+      294,
+      296,
+      304,
+      310,
+      311,
+      313,
+      317,
+      330,
+      334,
+      335,
+      336,
+      339,
+      342,
+      346,
+      354,
+      362,
+      372,
+      380,
+      383,
+      387
+    ]
+  },
+  "scored_at": "2026-10-12T01:07:52+00:00",
+  "courtlistener_calls_this_run": 4,
+  "claude_calls_this_run": 100,
+  "no_tools_usage": {
+    "input_tokens": 115459,
+    "output_tokens": 23160,
+    "model": "claude-opus-5-5"
+  },
+  "caveats": [
+    "Only non_existent_citation and case_name_mismatch are scored; quote, proposition and pincite errors need opinion text for nearly every citation, which the CourtListener quota can't cover.",
+    "The gainsay arm skips the name-search fallback to save quota, so it can only under-flag.",
+    "The reporter-series check was added after inspecting labelled examples from this eval split, so its contribution is not a held-out result."
+  ],
+  "arms": [
+    {
+      "arm": "gainsay",
+      "predictions": 60,
+      "correct": 25,
+      "precision": 0.417,
+      "recall": 0.647,
+      "f1": 0.507,
+      "recall_by_type": {
+        "non_existent_citation": "7/7",
+        "case_name_mismatch": "15/27"
+      }
+    },
+    {
+      "arm": "lookup-only",
+      "predictions": 25,
+      "correct": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "recall_by_type": {
+        "non_existent_citation": "0/7",
+        "case_name_mismatch": "0/27"
+      }
+    },
+    {
+      "arm": "no-tools",
+      "predictions": 37,
+      "correct": 30,
+      "precision": 0.811,
+      "recall": 0.765,
+      "f1": 0.787,
+      "recall_by_type": {
+        "non_existent_citation": "7/7",
+        "case_name_mismatch": "19/27"
+      }
+    }
+  ],
+  "predictions": {
+    "gainsay": {
+      "4": [
+        "244 F.3d 1152"
+      ],
+      "14": [
+        "610 F.3d 451",
+        "188 U.S. App. D.C. 51"
+      ],
+      "36": [
+        "461 F. Supp. 1314",
+        "406 So. 2d 66",
+        "534 F.3d 676",
+        "982 N.E.4th 701"
+      ],
+      "44": [
+        "265 F.2d 385"
+      ],
+      "45": [
+        "462 B.R. 283"
+      ],
+      "65": [
+        "661 F.3d 1209"
+      ],
+      "72": [
+        "684 F.3d 1332"
+      ],
+      "78": [
+        "84 F.3d 18",
+        "873 F.2d 701",
+        "691 F.3d 294",
+        "325 F. Supp. 2d 340",
+        "446 F.3d 541",
+        "691 F.3d 294",
+        "503 F.3d 217",
+        "109 F.3d 173"
+      ],
+      "118": [
+        "676 F.3d 1129",
+        "568 F.3d 710"
+      ],
+      "131": [
+        "555 N.W.2d 156"
+      ],
+      "135": [
+        "687 F.3d 569"
+      ],
+      "149": [
+        "87 F.3d 484",
+        "476 F. Supp. 2d 374"
+      ],
+      "150": [
+        "464 F.3d 1"
+      ],
+      "161": [
+        "151 F.2d. 240",
+        "271 SW 720"
+      ],
+      "162": [
+        "111 F.3d 1427",
+        "42 Cal. 284"
+      ],
+      "185": [
+        "200 F.3d 855"
+      ],
+      "196": [
+        "809 F.3d 1268"
+      ],
+      "200": [
+        "514 S.W.4th 576",
+        "689 F. 3d 29"
+      ],
+      "205": [
+        "911 F.2d 242"
+      ],
+      "208": [
+        "272 U.S. 52"
+      ],
+      "211": [
+        "363 N.C. 546"
+      ],
+      "217": [
+        "2014 WL 2048175"
+      ],
+      "223": [
+        "30 F.3d 224",
+        "986 F.2d 1418"
+      ],
+      "230": [
+        "573 P.4th 88",
+        "552 F.3d 1255"
+      ],
+      "241": [
+        "720 F.2d 679",
+        "95 S.E.4th 749"
+      ],
+      "244": [
+        "775 F. Supp. 2d 178",
+        "607 F.2d 1001",
+        "775 F. Supp. 2d 178",
+        "607 F.2d 1001"
+      ],
+      "247": [
+        "618 N.Y.S.4th 372",
+        "618 N.Y.S.4th 372"
+      ],
+      "271": [
+        "491 F.2d 4",
+        "407 F.3d 1038",
+        "216 F.3d 659"
+      ],
+      "279": [
+        "998 So. 2d 1212"
+      ],
+      "284": [
+        "678 P.2d 842",
+        "407 N.Y.S.4th 54"
+      ],
+      "286": [
+        "687 F.3d 671"
+      ],
+      "287": [
+        "452 F.3d 930"
+      ],
+      "294": [
+        "477 F.3d 728",
+        "853 F.2d 958",
+        "467 U.S. 837",
+        "239 S.W.4th 88",
+        "599 So. 2d 195"
+      ],
+      "296": [
+        "305 U.S. 197"
+      ]
+    },
+    "lookup-only": {
+      "20": [
+        "2006 WL 644442",
+        "2006 WL 644442"
+      ],
+      "22": [
+        "1993 U.S. App. LEXIS 33454"
+      ],
+      "38": [
+        "2015 WL 774655"
+      ],
+      "41": [
+        "1989 WL 1178203",
+        "2012 WL 2068543"
+      ],
+      "42": [
+        "801 Fed. Appx. 134"
+      ],
+      "46": [
+        " Add. 12",
+        " Add. 19",
+        " Add. 19"
+      ],
+      "78": [
+        "2009 WL 3207277"
+      ],
+      "131": [
+        "819 N.W.2d 563"
+      ],
+      "161": [
+        "481 F. 2d 946"
+      ],
+      "200": [
+        " Add. 4"
+      ],
+      "208": [
+        "2021 WL 3612787",
+        "31 Op. O.L.C. 73"
+      ],
+      "210": [
+        "2013 WL 2394358"
+      ],
+      "244": [
+        "2012 WL 33163",
+        "2011 WL 5975809",
+        "2012 WL 33163"
+      ],
+      "256": [
+        "2015 WL 774655"
+      ],
+      "261": [
+        "616 F.2d 153"
+      ],
+      "276": [
+        "553 S.W.2d 903"
+      ],
+      "281": [
+        "2016 WL 7197391"
+      ],
+      "286": [
+        "2017 WL 476748"
+      ]
+    },
+    "no-tools": {
+      "0": [],
+      "2": [],
+      "4": [],
+      "12": [],
+      "14": [
+        "United States v. Hall, 610 F.3d 451 (D.C. Cir. 2010)"
+      ],
+      "17": [],
+      "20": [],
+      "22": [],
+      "25": [],
+      "31": [],
+      "32": [],
+      "35": [],
+      "36": [
+        "Brown, 406 So. 2d 66 (Fla. 4th DCA 1981)",
+        "*Kickapoo Tribe of Indians v. Babbitt*, 982 N.E.4th 701, 702 (1st Cir. 1981) n.3 (D.C. Cir. 1995)"
+      ],
+      "38": [],
+      "40": [],
+      "41": [],
+      "42": [],
+      "44": [],
+      "45": [],
+      "46": [],
+      "48": [],
+      "54": [],
+      "58": [],
+      "64": [],
+      "65": [],
+      "72": [
+        "College Broadcasters, Inc. v. Copyright Royalty Board, 684 F.3d 1332 (D.C. Cir. 2012)"
+      ],
+      "78": [
+        "Sempier v. Johnson & Higgins, 84 F.3d 18 (1st Cir. 1984)",
+        "Spinella v. Pearce, 873 F.2d 701, 707 (3d Cir.1989)",
+        "*Yashenko v. Harrah\u2019s NC Casino Co., LLC*, 325 F. Supp. 2d 340, 662 (W.D.N.C. 2005)"
+      ],
+      "84": [],
+      "86": [],
+      "87": [],
+      "94": [],
+      "97": [],
+      "99": [
+        "*Fowler*, 344 F.3d at 1211",
+        "Fowler, 344 F.3d at 1211"
+      ],
+      "113": [],
+      "115": [],
+      "117": [],
+      "118": [],
+      "119": [],
+      "130": [
+        "*Alice*, 132 S.Ct. at 2355"
+      ],
+      "131": [],
+      "135": [
+        "Petrofac, Inc. v. DynMcDermott Petroleum Operations Co., 687 F.3d 569 & 675 n.2 (5th Cir. 2012)"
+      ],
+      "141": [],
+      "149": [],
+      "150": [],
+      "161": [],
+      "162": [],
+      "164": [],
+      "172": [],
+      "175": [],
+      "185": [],
+      "196": [],
+      "200": [
+        "The Holy Transfig. Monastery v. Archbishop Gregory, 514 S.W.4th 576 (11th Cir. 2018)"
+      ],
+      "201": [],
+      "205": [],
+      "207": [],
+      "208": [],
+      "210": [],
+      "211": [],
+      "217": [],
+      "220": [],
+      "223": [
+        "Salazar v. Washington Metro. Transit Auth., 30 F.3d 224 (1st Cir. 1993)",
+        "Waterhouse v. District of Columbia, 986 F.2d 1418 (5th Cir. 1993)"
+      ],
+      "230": [
+        "*Christensen v. Harris Cnty.* , 573 P.4th 88, 89 (1st Cir. 2008)"
+      ],
+      "232": [],
+      "234": [],
+      "239": [],
+      "241": [
+        "Charles v. Orange County, 720 F.2d 679 (6th Cir. 1983)",
+        "Dixon v. County of Cook, 95 S.E.4th 749 (7th Cir. 1987)"
+      ],
+      "244": [
+        "Kallen v. J.R. Eight, Inc., 775 F. Supp. 2d 178",
+        "Access 4 All, Inc. v. Casa Marina Owner, LLC, 607 F.2d 1001",
+        "Kallen, 775 F. Supp. 2d 178",
+        "Casa Marina Owner, LLC, 607 F.2d 1001"
+      ],
+      "247": [
+        "Three Boys Music Corp. v. Bolton, 618 N.Y.S.4th 372, 412 (6th Cir. 1984)",
+        "Three Boys Music, 618 N.Y.S.4th 372, 412 (6th Cir. 1984)"
+      ],
+      "256": [],
+      "261": [
+        "*Asarco, Inc v. EPA*, 616 F.2d 153 (9th Cir. 1980)"
+      ],
+      "266": [],
+      "270": [],
+      "271": [
+        "Treece v. Secretary, H.H.S, 491 F.2d 4 (5th Cir. 1974)",
+        "Vela v. City of Houston, 216 F.3d 659, 667 (5th Cir. 2001)"
+      ],
+      "276": [],
+      "279": [
+        "*United States v. Russell*, 998 So. 2d 1212 (Fla. 4th DCA 2009)"
+      ],
+      "281": [
+        "*Spinella*, 847 F.3d at 1042-43"
+      ],
+      "284": [
+        "United States v. Nosal, --- F.3d ----, 678 P.2d 842 (Wash. Ct. App. 1984)",
+        "United v. Goyal, 407 N.Y.S.4th 54, 60 (Cal. Ct. App. 2013)"
+      ],
+      "286": [
+        "*United States v. Braswell*, 687 F.3d 671, 675 (5th Cir. 2012)"
+      ],
+      "287": [],
+      "291": [],
+      "294": [
+        "*Consolo v.* Fed. Mar. Comm\u2019n, 239 S.W.4th 88, 105 (D.N.J. 2020)",
+        "Consol. Edison Co. v. NLRB, 599 So. 2d 195 (Fla. 3d DCA 1992)"
+      ],
+      "296": [],
+      "304": [],
+      "310": [],
+      "311": [],
+      "313": [],
+      "317": [],
+      "330": [],
+      "334": [],
+      "335": [],
+      "336": [
+        "City of Fairbanks v. Amoco Chemical Co. 836 F. Supp. 690 (1993)"
+      ],
+      "339": [],
+      "342": [
+        "United States v. Taunah 583 F. Supp. 1128 (1983)"
+      ],
+      "346": [],
+      "354": [],
+      "362": [],
+      "372": [
+        "United States ex rel. Wojculewicz v. Richmond 170 F. Supp. 1 (1958)"
+      ],
+      "380": [],
+      "383": [
+        "General Motors Corp. v. Burns, 316 F. Supp. 803 (1970)",
+        "General Motors Corp. v. Burns 316 F. Supp. 803 (1970)"
+      ],
+      "387": []
+    }
+  }
+}

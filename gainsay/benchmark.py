@@ -74,8 +74,10 @@ def load_excerpts(path: Path) -> list[Excerpt]:
     return excerpts
 
 
-def subset(excerpts: list[Excerpt], size: int, seed: int) -> list[Excerpt]:
-    chosen = sorted(random.Random(seed).sample(range(len(excerpts)), min(size, len(excerpts))))
+def subset(excerpts: list[Excerpt], size: int, seed: int, exclude: frozenset[int] = frozenset()) -> list[Excerpt]:
+    """A seeded random sample, disjoint from excluded indices (a development subset)."""
+    pool = [i for i in range(len(excerpts)) if i not in exclude]
+    chosen = sorted(random.Random(seed).sample(pool, min(size, len(pool))))
     return [excerpts[i] for i in chosen]
 
 
