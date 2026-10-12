@@ -132,12 +132,12 @@ def latest_mata_score(results: Path = RESULTS_DIR) -> dict[str, Any] | None:
 
 
 def benchmark_result(results: Path = RESULTS_DIR) -> dict[str, Any] | None:
-    """The stored LePhantomCite score not used for development: the full split, else the held-out subset.
+    """The stored LePhantomCite score not used for development: the unseen excerpts, else the held-out subset.
 
     Five-type results score the citation-level types and all five; an older
     held-out file scores only the citation-level types.
     """
-    for pattern in ("lephantomcite-full-*-five-types.json", "lephantomcite-heldout-*-five-types.json"):
+    for pattern in ("lephantomcite-unseen-*-five-types.json", "lephantomcite-heldout-*-five-types.json"):
         files = sorted(results.glob(pattern))
         if files:
             data = json.loads(files[-1].read_text())

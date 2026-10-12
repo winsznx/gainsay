@@ -14,16 +14,16 @@ def five_types(role, size):
     }
 
 
-def test_the_full_split_is_preferred_over_the_held_out_subset(tmp_path):
+def test_the_unseen_excerpts_are_preferred_over_the_held_out_subset(tmp_path):
     (tmp_path / "lephantomcite-heldout-n100-seed777.json").write_text(json.dumps(
         {"subset": {"size": 100}, "arms": arms("gainsay", "no-tools")}
     ))
     assert benchmark_result(tmp_path)["all_types"] is None
     (tmp_path / "lephantomcite-heldout-n100-seed777-five-types.json").write_text(json.dumps(five_types("heldout", 100)))
     assert benchmark_result(tmp_path)["role"] == "heldout"
-    (tmp_path / "lephantomcite-full-n390-five-types.json").write_text(json.dumps(five_types("full", 390)))
+    (tmp_path / "lephantomcite-unseen-n190-five-types.json").write_text(json.dumps(five_types("unseen", 190)))
     result = benchmark_result(tmp_path)
-    assert (result["role"], result["size"]) == ("full", 390)
+    assert (result["role"], result["size"]) == ("unseen", 190)
     assert set(result["all_types"]) == {"gainsay"}
 
 

@@ -241,11 +241,11 @@
 <section class="section" id="measured" aria-labelledby="bench-heading">
   <div class="bench">
     <div>
-      <span class="badge">LePhantomCite, {{ "full eval split" if benchmark.role == "full" else "held-out excerpts" }}</span>
+      <span class="badge">LePhantomCite, {{ "excerpts no run had touched" if benchmark.role == "unseen" else "held-out excerpts" }}</span>
       <h2 id="bench-heading">Measured against Claude working from memory</h2>
       {% set best_cited = cited["no-tools"] %}
       <p>
-        {{ benchmark.size }} {{ "excerpts, the whole eval split," if benchmark.role == "full" else "held-out excerpts" }}
+        {{ benchmark.size }} {{ "excerpts no development or earlier test had used," if benchmark.role == "unseen" else "held-out excerpts" }}
         from LePhantomCite, a benchmark of real brief excerpts with labelled citation errors. F1 is shown with its
         precision and recall.
         {% if cited.gainsay.f1 >= best_cited.f1 %}
