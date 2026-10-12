@@ -70,6 +70,14 @@ CREATE TABLE IF NOT EXISTS runs (
     finished_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS run_traces (
+    run_id INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    trace_id TEXT NOT NULL PRIMARY KEY,
+    started_at TEXT NOT NULL,
+    outcome TEXT,
+    reason TEXT
+);
+
 CREATE TABLE IF NOT EXISTS findings (
     id INTEGER PRIMARY KEY,
     run_id INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
@@ -205,6 +213,18 @@ def finish_run(conn: sqlite3.Connection, run_id: int, status: str, reason: str |
         conn.execute(
             "UPDATE runs SET status = ?, status_reason = ?, finished_at = ? WHERE id = ?",
             (status, reason, now(), run_id),
+        )
+
+
+def record_trace(
+    conn: sqlite3.Connection, run_id: int, trace_id: str, outcome: str | None = None, reason: str | None = None
+) -> None:
+    """The neatlogs trace for one attempt at a run. A resumed run has one per attempt."""
+    with conn:
+        conn.execute(
+            "INSERT INTO run_traces (run_id, trace_id, started_at, outcome, reason) VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT (trace_id) DO UPDATE SET outcome = excluded.outcome, reason = excluded.reason",
+            (run_id, trace_id, now(), outcome, reason),
         )
 
 

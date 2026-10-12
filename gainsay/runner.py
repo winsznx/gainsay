@@ -15,7 +15,7 @@ from gainsay.cache import CachedCourtListener
 from gainsay.checker import CHECKS, Checker
 from gainsay.courtlistener import BudgetExhausted, CourtListenerError
 from gainsay.existence import Authority
-from gainsay.ledger import finish_run, record_finding, recorded_checks, resume_run, start_run
+from gainsay.ledger import finish_run, record_finding, record_trace, recorded_checks, resume_run, start_run
 from gainsay.proposition import Judge
 from gainsay.tracing import Tracing
 
@@ -54,8 +54,11 @@ def run_checks(
         (filing_id,),
     ).fetchall()
     done = recorded_checks(conn, run_id)
-    try:
-        with tracing.span("gainsay.check_run", run_id=run_id, run_version=version, filing_id=filing_id):
+    with tracing.span("gainsay.check_run", run_id=run_id, run_version=version, filing_id=filing_id) as run_span:
+        trace_id = _trace_id(run_span)
+        if trace_id:
+            record_trace(conn, run_id, trace_id)
+        try:
             checker = Checker(api, load_authorities(conn, filing_id), citations, judge)
             for citation in citations:
                 if all((citation["id"], check) in done for check in CHECKS):
@@ -77,14 +80,33 @@ def run_checks(
                         )
                         if span is not None:
                             span.set_attribute(f"gainsay.{finding.check}", finding.outcome)
-    except (BudgetExhausted, anthropic.RateLimitError) as exc:
-        finish_run(conn, run_id, "paused", str(exc))
-        return RunResult(run_id, "paused", str(exc))
-    except CourtListenerError as exc:
-        finish_run(conn, run_id, "failed", str(exc))
-        return RunResult(run_id, "failed", str(exc))
-    finish_run(conn, run_id, "complete")
-    return RunResult(run_id, "complete")
+        except (BudgetExhausted, anthropic.RateLimitError) as exc:
+            result = RunResult(run_id, "paused", str(exc))
+            _record_failure(run_span, exc)
+        except CourtListenerError as exc:
+            result = RunResult(run_id, "failed", str(exc))
+            _record_failure(run_span, exc)
+        else:
+            result = RunResult(run_id, "complete")
+        if run_span is not None:
+            run_span.set_attribute("gainsay.run_status", result.status)
+        if trace_id:
+            record_trace(conn, run_id, trace_id, result.status, result.reason)
+    finish_run(conn, run_id, result.status, result.reason)
+    return result
+
+
+def _trace_id(span: object | None) -> str | None:
+    if span is None:
+        return None
+    return f"{span.get_span_context().trace_id:032x}"
+
+
+def _record_failure(span: object | None, exc: Exception) -> None:
+    """Put the failure in the trace, so a paused run shows what stopped it."""
+    if span is not None:
+        span.record_exception(exc)
+        span.set_attribute("gainsay.status_reason", str(exc))
 
 
 def paused_run(conn: sqlite3.Connection, filing_id: int, version: str) -> int | None:
