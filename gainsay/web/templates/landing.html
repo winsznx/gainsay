@@ -249,10 +249,10 @@
     {% for name, logos, href, about in [
       ("neatlogs", ["neatlogs.png"], "https://neatlogs.com", "One trace per run attempt and one span per citation check, tagged with the commit the run used."),
       ("Entire", ["entire.svg"], "https://entire.io", "Checkpoints every commit with the agent session behind it, so each change has its reasoning attached."),
+      ("cfo.ai", ["cfo-ai.svg"], "https://cfo.ai", "Modeled Gainsay as legal software priced per watched docket, built on the measured Claude cost per citation."),
       ("Claude", ["claude.svg"], "https://www.anthropic.com/claude", "Answers one question per citation: do these opinion passages support this sentence. It never sees the rest of the filing."),
       ("CourtListener and RECAP", ["courtlistener.svg", "recap.svg"], "https://www.courtlistener.com", "Free Law Project's dockets, filings and opinions. Every call goes through one rate-limited client."),
-      ("eyecite", ["eyecite.svg"], "https://github.com/freelawproject/eyecite", "Free Law Project's citation parser finds the citations in the filing text locally, before a single network call."),
-      ("RapidFuzz", ["rapidfuzz.svg"], "https://github.com/rapidfuzz/RapidFuzz", "Matches quoted words against opinion text that has OCR slips, brackets and ellipses."),
+      ("eyecite and RapidFuzz", ["eyecite.svg", "rapidfuzz.svg"], "https://github.com/freelawproject/eyecite", "eyecite finds the citations in the filing text locally. RapidFuzz matches quoted words against opinion text with OCR slips, brackets and ellipses."),
     ] %}
     <a class="sponsor" href="{{ href }}">
       <span class="logo-row">{% for logo in logos %}<span class="logo-tile"><img src="{{ url_for('static', path='logos/' ~ logo) }}" alt="" height="30"></span>{% endfor %}</span>

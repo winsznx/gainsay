@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!--
+    THE FAVICON CROP (Kal, 2026-08-12). Derived from the canonical mark
+    in public/brand/cfoai-icon.svg; never drawn by hand.
+
+    The full mark is 2.8:1, far wider than a square, so fitting all of
+    it into 32px leaves the bars too fine to read. The icon CROPS
+    instead: the left column sits on a real margin and the third column
+    runs off the right edge at exactly its midpoint, so the mark reads
+    as a fragment of something continuing rather than a small complete
+    thing. 2.5 columns visible.
+
+    TRUE PROPORTIONS. The bars keep the source 4:1 ratio and the source
+    bar-to-gap rhythm exactly, scaled 1.2x. Nothing is thickened for
+    legibility: the mark's proportions do not move, here or anywhere.
+    At 16px this reads as a dense ruled block rather than three
+    countable rows, and that is the accepted trade.
+
+    Geometry: bar 9.6 wide on a 12 pitch from x=3.2, so column three is
+    cut at 4.8 of its 9.6. Rows 2.4 tall on a 4.8 pitch, centered.
+  -->
+  <rect width="32" height="32" fill="#17150F"/>
+  <g fill="#F6F2E8">
+    <rect x="3.2" y="10" width="9.6" height="2.4"/>
+    <rect x="15.2" y="10" width="9.6" height="2.4"/>
+    <rect x="27.2" y="10" width="9.6" height="2.4"/>
+    <rect x="3.2" y="14.8" width="9.6" height="2.4"/>
+    <rect x="15.2" y="14.8" width="9.6" height="2.4"/>
+    <rect x="27.2" y="14.8" width="9.6" height="2.4"/>
+    <rect x="3.2" y="19.6" width="9.6" height="2.4"/>
+    <rect x="15.2" y="19.6" width="9.6" height="2.4"/>
+    <rect x="27.2" y="19.6" width="9.6" height="2.4"/>
+  </g>
+</svg>
