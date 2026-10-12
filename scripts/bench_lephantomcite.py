@@ -232,6 +232,7 @@ def main() -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
+    version = run_version()
     factory = OfflineClient if args.courtlistener == "offline" else CourtListenerClient
     api = CachedCourtListener(conn, client_factory=factory)
     cap = Cap()
@@ -271,7 +272,7 @@ def main() -> int:
             "indices": [e.index for e in excerpts],
         },
         "scored_at": now(),
-        "version": run_version(),
+        "version": version,
         "courtlistener": args.courtlistener,
         "courtlistener_calls_this_run": api.calls,
         "courtlistener_served_from_ledger": api.cache_hits,
