@@ -116,6 +116,8 @@ def gainsay_arm(api, cap, judge, excerpts) -> tuple[dict, dict, dict, dict]:
                 "pincite": occurrence.pincite,
                 "quotes": json.dumps(occurrence.quotes),
                 "proposition": occurrence.proposition,
+                "signal": occurrence.signal,
+                "parenthetical": occurrence.parenthetical,
             }
             for n, occurrence in enumerate(extraction.citations, 1)
         ]
@@ -126,7 +128,9 @@ def gainsay_arm(api, cap, judge, excerpts) -> tuple[dict, dict, dict, dict]:
             citation_level.setdefault(index, []).extend(citation_spans(occurrence.kind, span, findings))
             everything.setdefault(index, []).extend(
                 raw_span(texts[index], flagged)
-                for flagged in predicted_spans(occurrence.kind, span, occurrence.proposition, findings)
+                for flagged in predicted_spans(
+                    occurrence.kind, span, occurrence.proposition, findings, occurrence.parenthetical
+                )
             )
             details.setdefault(index, []).append({
                 "cite": occurrence.cite_text,

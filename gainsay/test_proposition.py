@@ -110,3 +110,11 @@ def test_prefetch_asks_once_for_each_uncached_prompt_and_later_calls_hit_the_led
     calls = judge.calls
     assert judge("system", "b")["verdict"]["verdict"] == "supports"
     assert judge.calls == calls
+
+
+def test_the_signal_and_parenthetical_are_sent_as_data():
+    request = render_request("The stay tolls.", [], True, "cf.", "holding that a stay tolls a limit")
+    assert "<signal>cf.</signal>" in request
+    assert "<filing_parenthetical>\nholding that a stay tolls a limit\n</filing_parenthetical>" in request
+    assert request.endswith("Does the opinion support the filing's statement and parenthetical?")
+    assert "<signal>none</signal>" in render_request("The stay tolls.", [], True)

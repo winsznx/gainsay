@@ -102,12 +102,13 @@ class Checker:
                 Finding("proposition", NOT_APPLICABLE, reason),
                 self._pincite(citation["pincite"], source, reporter, identity),
             ]
+        quotation = self._quotation(quotes, source, reporter, existence)
         return [
             existence,
             identity,
-            self._quotation(quotes, source, reporter, existence),
+            quotation,
             self._proposition(citation, source, reporter, existence, identity),
-            self._pincite(pincite, source, reporter, identity),
+            self._pincite(pincite, source, reporter, identity, quotation),
         ]
 
     def _case_findings(self, authority: Authority) -> tuple[Finding, Finding]:
@@ -146,7 +147,8 @@ class Checker:
         pin = parse_pin(citation["pincite"]) if citation["pincite"] and identity.outcome == PASS else None
         try:
             finding = check_proposition(
-                citation["proposition"], opinions, first_page(reporter), pin, self._judge
+                citation["proposition"], opinions, first_page(reporter), pin, self._judge,
+                _column(citation, "signal"), _column(citation, "parenthetical"),
             )
         except anthropic.RateLimitError:
             raise
@@ -155,7 +157,12 @@ class Checker:
         return replace(finding, evidence={**finding.evidence, **provenance})
 
     def _pincite(
-        self, pincite: str | None, source: TextSource | None, reporter: str, identity: Finding
+        self,
+        pincite: str | None,
+        source: TextSource | None,
+        reporter: str,
+        identity: Finding,
+        quotation: Finding | None = None,
     ) -> Finding:
         if not pincite:
             return check_pincite(pincite, None, [])
@@ -165,7 +172,7 @@ class Checker:
         if isinstance(text, str):
             return Finding("pincite", UNVERIFIABLE, text, _source_evidence(source))
         opinions, provenance = text
-        finding = check_pincite(pincite, reporter, opinions)
+        finding = check_pincite(pincite, reporter, opinions, _quote_pages(quotation))
         return replace(finding, evidence={**finding.evidence, **provenance})
 
     def _text_for(self, source: TextSource) -> tuple[list[OpinionText], dict] | str:
@@ -226,6 +233,21 @@ class Checker:
         except CapError as exc:
             return None, str(exc)
         return None, None
+
+
+def _column(citation, name: str) -> str | None:
+    """A citation column a ledger from before it was added doesn't have."""
+    try:
+        return citation[name]
+    except (KeyError, IndexError):
+        return None
+
+
+def _quote_pages(quotation: Finding | None) -> list[int]:
+    """Pages where a passing quotation check found the quoted words."""
+    if quotation is None or quotation.outcome != PASS:
+        return []
+    return [m["page"] for m in quotation.evidence.get("passages", []) if m.get("page") is not None]
 
 
 def _source_for(existence: Finding, identity: Finding) -> TextSource | None:

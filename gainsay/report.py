@@ -44,6 +44,8 @@ class CitationReport:
     proposition: str
     quotes: list[str]
     checks: dict[str, CheckResult] = field(default_factory=dict)
+    signal: str | None = None
+    parenthetical: str | None = None
 
     @property
     def status(self) -> str:
@@ -143,6 +145,8 @@ def load_run(conn: sqlite3.Connection, run_id: int) -> RunReport | None:
             in_quotation=bool(row["in_quotation"]),
             proposition=row["proposition"],
             quotes=json.loads(row["quotes"]),
+            signal=row["signal"],
+            parenthetical=row["parenthetical"],
         )
         for row in rows
     }

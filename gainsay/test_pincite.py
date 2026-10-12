@@ -50,3 +50,11 @@ def test_pin_reporter_by_citation_kind():
     assert pin_reporter("full", "Tseng, 525 U.S. 155, 161, 119 S.Ct. 662", tseng, None) == "525 U.S. 155"
     assert pin_reporter("id", "Id. at 166, 119 S. Ct. 662", tseng, "525 U.S. 155") == "525 U.S. 155"
     assert pin_reporter("short", "Tseng, 525 U.S., at 161", tseng, None) == "525 U.S. 155"
+
+
+def test_a_pin_inside_the_opinion_fails_when_the_quote_is_on_another_page():
+    finding = check_pincite("595", "391 U.S. 593", KAISER, quote_pages=[593])
+    assert finding.outcome == FAIL
+    assert finding.reason == "the quoted words are on page 593 of 391 U.S. 593, not page 595"
+    assert check_pincite("595", "391 U.S. 593", KAISER, quote_pages=[594]).outcome == PASS
+    assert check_pincite("595", "391 U.S. 593", KAISER, quote_pages=[595]).outcome == PASS

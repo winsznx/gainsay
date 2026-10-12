@@ -303,3 +303,37 @@ def test_a_footnote_number_after_a_period_still_ends_the_sentence():
     )
     (tseng,) = extract(text).citations
     assert tseng.proposition == "Treaties are the supreme law of the land."
+
+
+def test_a_spaced_right_quote_still_closes_the_quotation():
+    text = (
+        "there is no “evidentiary presumption of fair use for all private uses. ” Sony BMG Music Entm’t v. "
+        "Tenenbaum, 672 F. Supp. 2d 217, 226 (D. Mass. 2009). The court agreed."
+    )
+    (span,) = find_quotes(text)
+    assert text[span[0]:span[1]] == "evidentiary presumption of fair use for all private uses. "
+
+
+def test_signals_and_explanatory_parentheticals_are_kept_with_each_citation():
+    text = (
+        "Congress meant to limit the statute. CTS Corp. v. Waldburger, 134 S. Ct. 2175, 2185 (2014) "
+        "(rejecting a reading that would expand the statute); see also Smith v. Jones, 1 F.3d 2, 5 "
+        "(2d Cir. 1990) (quoting Doe v. Roe, 2 F.3d 3 (2d Cir. 1991)); cf. Foo v. Bar, 3 F.3d 4 (2d Cir. 1992) "
+        "(citation omitted). But see Baz v. Qux, 4 F.3d 5, 9 (2d Cir. 1993) (holding that the statute "
+        "reaches (a) private parties and (b) states)."
+    )
+    cts, smith, doe, foo, baz = extract(text).citations
+    assert (cts.signal, cts.parenthetical) == (None, "rejecting a reading that would expand the statute")
+    assert (smith.signal, smith.parenthetical) == ("see also", None)
+    assert (foo.signal, foo.parenthetical) == ("cf.", None)
+    assert baz.signal == "but see"
+    assert baz.parenthetical == "holding that the statute reaches (a) private parties and (b) states"
+
+
+def test_who_wrote_an_opinion_is_not_what_it_holds():
+    text = (
+        "The standard is strict. Olmstead v. United States, 277 U.S. 438, 478 (1928) (Brandeis, J., dissenting). "
+        "It applies here. Int’l Internship Program v. Napolitano, 718 F. Supp. 2d 1, 5 (D.D.C. 2010) (Leon, J.)."
+    )
+    olmstead, internship = extract(text).citations
+    assert olmstead.parenthetical is None and internship.parenthetical is None

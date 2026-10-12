@@ -67,6 +67,19 @@ _MIN_PROPOSITION_WORDS = 5
 _COURT_YEAR_ONLY = re.compile(r"^\([^()]*\b\d{4}\)\s*$")
 # A citation signal inside a name walked back over a sentence end ("Evolutionary. See Content ...").
 _SIGNAL_LEAD = re.compile(r"\b(?:See|see|Cf\.|cf\.|Accord|accord|Compare|compare)(?:,?\s+(?:also|e\.g\.,?|generally))?,?\s+")
+_SIGNAL_BEFORE = re.compile(
+    r"(?:^|[\s(;.,])((?:[Ss]ee|[Cc]f\.|[Aa]ccord|[Cc]ompare|[Bb]ut\s+(?:see|cf\.))"
+    r"(?:,?\s+(?:also|generally|e\.g\.))?|[Ee]\.g\.)\s*,?\s*$"
+)
+_PIN_AFTER = re.compile(r"[\s,]*(?:(?:at\s+)?\*?\d[\d\s,\-–n.&*]*)?\s*")
+_COURT_YEAR_CONTENT = re.compile(r"^[^()]*\b\d{4}$")
+_BOILERPLATE = re.compile(
+    r"^(?:(?:internal\s+)?(?:citations?|quotations?|quotation\s+marks|alterations?|footnotes?|emphasis)"
+    r"(?:\s+and\s+\w+(?:\s+marks)?)?\s+(?:omitted|added|in\s+original|supplied)|quoting\b|citing\b|"
+    r"per\s+curiam|en\s+banc|unpublished|table|mem\.?|plurality|same|alteration|emphasis|"
+    r"(?:\w+\s+)?(?:dissenting|concurring)|[\w.'’-]+,\s+(?:C\.\s*)?J{1,2}\.)",
+    re.IGNORECASE,
+)
 # Text eyecite folds into the front of a name: the end of a parenthetical, or an Id. cite.
 _NAME_JUNK = re.compile(r"^(?:.*\)\.\s+|(?:Id|Ibid)\.(?:\s+at\s+[\d,\s\-–]+)?\.?\s+)")
 
@@ -93,6 +106,8 @@ class Occurrence:
     proposition: str
     in_quotation: bool
     quotes: list[str] = field(default_factory=list)
+    signal: str | None = None
+    parenthetical: str | None = None
 
 
 @dataclass
@@ -159,7 +174,8 @@ def find_quotes(text: str) -> list[tuple[int, int]]:
 
     Double quotes don't nest in legal writing, so a quote mark inside an open
     quote only closes it when it hugs the preceding word. That keeps OCR'd
-    inner quotes from splitting a block quotation.
+    inner quotes from splitting a block quotation. A right curly quote can
+    only close, so it closes even with a space before it ("uses. ” Sony").
     """
     spans = []
     start = None
@@ -171,7 +187,7 @@ def find_quotes(text: str) -> list[tuple[int, int]]:
         if start is None:
             if (before.isspace() or before in "([") and not after.isspace():
                 start = i + 1
-        elif not before.isspace() and (after.isspace() or after in ".,;:)]"):
+        elif (not before.isspace() or char == "”") and (after.isspace() or after in ".,;:)]"):
             spans.append((start, i))
             start = None
     return spans
@@ -280,6 +296,8 @@ def extract(raw_text: str) -> Extraction:
                 span=span,
                 proposition=_proposition(text, sentences, protected, span),
                 in_quotation=any(qs <= span[0] < qe for qs, qe in quotes),
+                signal=_signal(text, span[0]),
+                parenthetical=_explanatory_parenthetical(text, group[-1].span()[1]),
             )
         )
 
@@ -591,6 +609,38 @@ def _proposition(
     if index > 0 and _word_count(text, start, end, citation_spans) < _MIN_PROPOSITION_WORDS:
         start, end = sentences[index - 1]
     return text[start:end].strip()
+
+
+def _signal(text: str, start: int) -> str | None:
+    """The introductory signal right before a citation ("see also", "cf.", "but see"), lowercased."""
+    match = _SIGNAL_BEFORE.search(text[max(0, start - 40) : start])
+    if not match:
+        return None
+    return re.sub(r"\s+", " ", match.group(1).lower().replace(",", "")).strip()
+
+
+def _explanatory_parenthetical(text: str, cite_end: int) -> str | None:
+    """What the filing says the case holds, from the parenthetical after the cite.
+
+    Court-and-year parentheticals and boilerplate ("citation omitted",
+    "quoting ...", "emphasis added") are skipped; the citation clause ends at
+    anything other than a pincite, space or another parenthetical.
+    """
+    position = cite_end + len(_PIN_AFTER.match(text, cite_end).group())
+    while position < len(text) and text[position] == "(":
+        depth, end = 0, position
+        while end < len(text):
+            depth += {"(": 1, ")": -1}.get(text[end], 0)
+            if depth == 0:
+                break
+            end += 1
+        content = text[position + 1 : end].strip()
+        if not _COURT_YEAR_CONTENT.search(content) and not _BOILERPLATE.match(content):
+            return content or None
+        position = end + 1
+        while position < len(text) and text[position] in " \t\n":
+            position += 1
+    return None
 
 
 def _word_count(text: str, start: int, end: int, citation_spans: list[tuple[int, int]]) -> int:

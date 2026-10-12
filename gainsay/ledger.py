@@ -60,6 +60,8 @@ CREATE TABLE IF NOT EXISTS citations (
     proposition TEXT NOT NULL,
     quotes TEXT NOT NULL,
     in_quotation INTEGER NOT NULL,
+    signal TEXT,
+    parenthetical TEXT,
     UNIQUE (filing_id, ordinal)
 );
 
@@ -155,7 +157,11 @@ def connect(path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False) -> sqlite
 
 def _add_missing_columns(conn: sqlite3.Connection) -> None:
     """Columns added after a ledger was created. CREATE TABLE IF NOT EXISTS skips them."""
-    added = {"authorities": {"docket_number": "TEXT", "invented_reporter": "TEXT"}, "filings": {"attachment_number": "INTEGER"}}
+    added = {
+        "authorities": {"docket_number": "TEXT", "invented_reporter": "TEXT"},
+        "filings": {"attachment_number": "INTEGER"},
+        "citations": {"signal": "TEXT", "parenthetical": "TEXT"},
+    }
     for table, wanted in added.items():
         columns = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
         for column, kind in wanted.items():
@@ -219,8 +225,8 @@ def save_extraction(conn: sqlite3.Connection, filing_id: int, extraction: Extrac
         for citation in extraction.citations:
             conn.execute(
                 "INSERT INTO citations (filing_id, authority_id, ordinal, kind, cite_text, pincite, "
-                "span_start, span_end, proposition, quotes, in_quotation) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "span_start, span_end, proposition, quotes, in_quotation, signal, parenthetical) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     filing_id,
                     authority_ids[citation.authority.ordinal] if citation.authority else None,
@@ -233,6 +239,8 @@ def save_extraction(conn: sqlite3.Connection, filing_id: int, extraction: Extrac
                     citation.proposition,
                     json.dumps(citation.quotes),
                     int(citation.in_quotation),
+                    citation.signal,
+                    citation.parenthetical,
                 ),
             )
 

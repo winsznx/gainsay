@@ -86,3 +86,13 @@ def test_history_and_untied_short_cites_are_flagged_themselves():
     assert citation_spans("short", "Torrao, 923 F.2d at 234", untied) == ["Torrao, 923 F.2d at 234"]
     assert citation_spans("history", "cert. denied, 622 F.2d 589", findings(identity=F)) == ["cert. denied, 622 F.2d 589"]
     assert citation_spans("short", "Torrao, 923 F.2d at 234", findings(identity=F)) == []
+
+
+def test_a_rejected_parenthetical_flags_the_parenthetical():
+    def judged(part):
+        return [Finding("existence", P, "e"), Finding("identity", P, "i"),
+                Finding("proposition", F, "p", {"verdict": {"unsupported_part": part}})]
+    assert predicted_spans("full", "c", "The rule.", judged("parenthetical"), "holding X") == ["holding X"]
+    assert predicted_spans("full", "c", "The rule.", judged("both"), "holding X") == ["holding X", "The rule."]
+    assert predicted_spans("full", "c", "The rule.", judged("statement"), "holding X") == ["The rule."]
+    assert predicted_spans("full", "c", "The rule.", judged("parenthetical"), None) == ["The rule."]

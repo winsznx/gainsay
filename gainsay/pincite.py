@@ -1,8 +1,9 @@
-"""Pincite check: are the cited pages inside the opinion?
+"""Pincite check: are the cited pages inside the opinion, and where the quote is?
 
 The opinion's pages come from its star pagination. A pincite fails when it
 falls before the first page or after the last page break of the cited
-reporter. Star-paged database cites (WL, LEXIS) and paragraph pins have no
+reporter, or when the passages the citation quotes were found only on other
+pages. Star-paged database cites (WL, LEXIS) and paragraph pins have no
 page breaks to check against, so they are unverifiable.
 """
 
@@ -57,7 +58,12 @@ def pin_reporter(
     return next((c for c in authority_cites if c.startswith(prefix)), None)
 
 
-def check_pincite(pincite: str | None, reporter_cite: str | None, opinions: list[OpinionText]) -> Finding:
+def check_pincite(
+    pincite: str | None,
+    reporter_cite: str | None,
+    opinions: list[OpinionText],
+    quote_pages: list[int] | None = None,
+) -> Finding:
     if not pincite:
         return Finding("pincite", NOT_APPLICABLE, "no pincite given")
     if not reporter_cite:
@@ -87,5 +93,14 @@ def check_pincite(pincite: str | None, reporter_cite: str | None, opinions: list
             FAIL,
             f"{reporter_cite} runs from page {first} to {last}; pincite {pincite} is past the end",
             evidence,
+        )
+    if quote_pages and not any(start - 1 <= page <= end for page in quote_pages):
+        # A quote can begin at the foot of the page before the one cited, so that page counts too.
+        found = ", ".join(str(p) for p in sorted(set(quote_pages)))
+        return Finding(
+            "pincite",
+            FAIL,
+            f"the quoted words are on page {found} of {reporter_cite}, not page {pincite}",
+            {**evidence, "quote_pages": sorted(set(quote_pages))},
         )
     return Finding("pincite", PASS, f"pincite {pincite} is within pages {first}-{last} of {reporter_cite}", evidence)

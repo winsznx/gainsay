@@ -145,12 +145,15 @@ def citation_spans(kind: str, cite_span: str, findings: list[Finding]) -> list[s
     return [cite_span] if failed and own else []
 
 
-def predicted_spans(kind: str, cite_span: str, proposition: str, findings: list[Finding]) -> list[str]:
+def predicted_spans(
+    kind: str, cite_span: str, proposition: str, findings: list[Finding], parenthetical: str | None = None
+) -> list[str]:
     """Everything Gainsay flags for one citation, as the spans LePhantomCite labels.
 
-    On top of citation_spans: a pincite outside the opinion flags the
-    citation, a quote the opinion doesn't contain flags the quoted words, and
-    an opinion that doesn't support the statement flags the statement.
+    On top of citation_spans: a wrong pincite flags the citation, a quote the
+    opinion doesn't contain flags the quoted words, and an opinion that
+    doesn't support the claim flags the statement, the parenthetical, or both,
+    as the verdict says.
     """
     by_check = {f.check: f for f in findings}
     spans = citation_spans(kind, cite_span, findings)
@@ -159,7 +162,11 @@ def predicted_spans(kind: str, cite_span: str, proposition: str, findings: list[
     if "quotation" in by_check:
         spans.extend(missing_passages(by_check["quotation"]))
     if "proposition" in by_check and by_check["proposition"].outcome == FAIL:
-        spans.append(proposition)
+        part = (by_check["proposition"].evidence.get("verdict") or {}).get("unsupported_part")
+        if part in ("parenthetical", "both") and parenthetical:
+            spans.append(parenthetical)
+        if part != "parenthetical" or not parenthetical:
+            spans.append(proposition)
     return spans
 
 
