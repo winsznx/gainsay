@@ -1,0 +1,13 @@
+Semantic changes 3b255841c36cf79c26f79f4045330e71c6df8d24..69fddb1a2fcfa5147304d2b2155a7ead7ea798aa
+
+gainsay/existence.py (Python)
+  ~ function check_authority body changed (3 dependents)
+  + function _reported_elsewhere added
+  + function _reporter added
+  ~ function _search_by_name signature changed (1 dependent)
+
+gainsay/test_existence.py (Python)
+  - function test_namesake_from_the_other_court_system_does_not_count removed (0 dependents)
+  + function test_namesake_in_the_other_court_system_exists_but_is_not_where_cited added
+  + function test_same_reporter_at_another_page_is_wrong_but_a_missing_reporter_proves_nothing added
+

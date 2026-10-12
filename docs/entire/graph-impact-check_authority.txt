@@ -1,0 +1,61 @@
+Index: cache-miss (1203ms) | Query: 1ms | Total: 1205ms
+Impact: check_authority (gainsay/existence.py:82) def=82 span=82-149 [function]
+Blast radius: 16 callers (2 direct, 14 transitive), 10 callees, 8 type consumers, 10 data flows, 7 co-change files, 0 siblings.
+Callers (2 direct, 14 transitive; who breaks if behavior changes):
+- Checker._case_findings (gainsay/checker.py:78, def :76)
+- check (gainsay/test_existence.py:41, def :40)
+- Checker.check (gainsay/checker.py:56, def :42) [via Checker._case_findings]
+- test_cite_that_resolves_to_the_named_case_passes_both (gainsay/test_existence.py:46, def :44) [via check]
+- test_cite_that_resolves_to_another_case_is_wrong_case_and_name_is_searched (gainsay/test_existence.py:54, def :52) [via check]
+- test_unresolved_cite_with_no_name_match_is_not_found (gainsay/test_existence.py:74, def :69) [via check]
+- test_westlaw_cite_is_found_by_name_and_identity_stays_unverifiable (gainsay/test_existence.py:87, def :81) [via check]
+- test_name_search_result_from_a_distant_year_does_not_count (gainsay/test_existence.py:99, def :94) [via check]
+- test_namesake_in_the_other_court_system_exists_but_is_not_where_cited (gainsay/test_existence.py:110, def :103) [via check]
+- test_same_reporter_at_another_page_is_wrong_but_a_missing_reporter_proves_nothing (gainsay/test_existence.py:124, def :119) [+1 more call site, via check]
+- test_parallel_cite_resolving_is_enough (gainsay/test_existence.py:139, def :131) [via check]
+- test_nameless_cite_is_not_called_the_wrong_case (gainsay/test_existence.py:147, def :144) [+1 more call site, via check]
+- test_unpublished_decision_exists_through_its_recap_docket (gainsay/test_existence.py:167, def :155) [via check]
+- test_docket_match_needs_only_a_shared_party_word (gainsay/test_existence.py:186, def :175) [+1 more call site, via check]
+- test_westlaw_case_no_free_source_finds_is_unverifiable_not_missing (gainsay/test_existence.py:201, def :199) [via check]
+- ... +1 more (use --format json for the full list)
+Callees (10; what it depends on):
+- _only_database_cites (gainsay/existence.py:152)
+- _unresolved_reason (gainsay/existence.py:156)
+- _docket_exists (gainsay/existence.py:162)
+- _nameless (gainsay/existence.py:208)
+- _reported_elsewhere (gainsay/existence.py:229)
+- _search_by_name (gainsay/existence.py:251)
+- _matched_name (gainsay/existence.py:310)
+- _cluster_summary (gainsay/existence.py:325)
+- _search_summary (gainsay/existence.py:338)
+- Finding (gainsay/findings.py:11) [CONSTRUCTS]
+Type consumers (0 in, 8 out; USES_TYPE/PARAM_TYPE/RETURNS_TYPE):
+- -> CachedCourtListener (gainsay/cache.py:17) [PARAM_TYPE]
+- -> CachedCourtListener (gainsay/cache.py:17) [USES_TYPE]
+- -> Authority (gainsay/existence.py:49) [PARAM_TYPE]
+- -> Authority (gainsay/existence.py:49) [USES_TYPE]
+- -> Lookup (gainsay/existence.py:59) [PARAM_TYPE]
+- -> Lookup (gainsay/existence.py:59) [USES_TYPE]
+- -> Finding (gainsay/findings.py:11) [RETURNS_TYPE]
+- -> Finding (gainsay/findings.py:11) [USES_TYPE]
+Data flows (3 in, 7 out):
+- <- Checker._case_findings (gainsay/checker.py:76)
+- -> _only_database_cites (gainsay/existence.py:152)
+- -> _docket_exists (gainsay/existence.py:162)
+- <- _nameless (gainsay/existence.py:208)
+- -> _nameless (gainsay/existence.py:208)
+- -> _reported_elsewhere (gainsay/existence.py:229)
+- -> _search_by_name (gainsay/existence.py:251)
+- -> _matched_name (gainsay/existence.py:310)
+- <- Finding (gainsay/findings.py:11)
+- -> check (gainsay/test_existence.py:40)
+Co-change coupling (7; files that historically change with gainsay/existence.py):
+- gainsay/extract.py [files changed together in 2 recent commits]
+- gainsay/ledger.py [files changed together in 3 recent commits]
+- gainsay/names.py [files changed together in 2 recent commits]
+- gainsay/runner.py [files changed together in 2 recent commits]
+- gainsay/test_existence.py [files changed together in 7 recent commits]
+- gainsay/test_extract.py [files changed together in 2 recent commits]
+- gainsay/test_names.py [files changed together in 2 recent commits]
+Same-container siblings (0):
+- none

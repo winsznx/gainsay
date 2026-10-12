@@ -1,0 +1,96 @@
+  branch       main
+  checkpoints  31
+
+● 01M4PT5DVC69JDTR2PWK1HZVMA  feat: export a run as a Markdown report
+  10-12 02:03 (a5f9f10) feat: export a run as a Markdown report
+
+● 01M4PT4AAPPACHWVPEGTF3QDYM  feat: add a LePhantomCite harness for the citation-level ...
+  10-12 02:02 (ff2faca) feat: add a LePhantomCite harness for the citation-level error types
+
+● 01M4PT0YGCX0GZ141Z7EQCNGXC  "<task-notification>\n<task-id>a990c5772325d7a65</task-id>\n..."
+  10-12 02:00 (7bd84c5) feat: fail citations to reporter series that don't exist, with no API call
+
+● 01M4PSGSPG2CSRG3CTHK2VB9QM  feat: give a simulated outage a refill time and keep the ...
+  10-12 01:52 (c3ecf9d) feat: give a simulated outage a refill time and keep the queue visible while ...
+
+● 01M4PSG12T1HHM9H02KFE9FJNF  feat: show what a run is doing now, what comes next, and ...
+  10-12 01:51 (d808e22) feat: show what a run is doing now, what comes next, and when a pause ends
+
+● 01M4PSD4N9VX8M961V7VNZ1TTH  feat: mark Westlaw and Lexis cites free sources can't con...
+  10-12 01:50 (ac2e0d7) feat: mark Westlaw and Lexis cites free sources can't confirm as outside free...
+
+● 01M4PS9QHNEDED9K5W56AET2MQ  "the prd is in dowloads too resd form there"
+  10-12 01:48 (64c8351) feat: resume crashed runs and simulate labelled outages and crashes
+
+● 01M4PRXNDZXHSGXWX1SMREZFGX  docs: add a 3-minute demo script and the latest score rep...
+  10-12 01:41 (286038a) docs: add a 3-minute demo script and the latest score reports
+
+● 01M4PRVWJZHF274RRQVZ2PFMY3  fix: accept a docket match that shares a party word with ...
+  10-12 01:40 (eee7aba) fix: accept a docket match that shares a party word with the cited name
+
+● 01M4PRSRJAX13ASX898QG571GB  "<task-notification>\n<task-id>bem64g0pk</task-id>\n<tool-us..."
+  10-12 01:39 (9c6bb19) fix: verify unpublished decisions by docket and stop checking history as a pr...
+
+● 01M4PRBGZH57FXXT0NR4HAHF95  "i authroize u to rrad the prd in internal end to end if w..."
+  10-12 01:31 (90299cd) docs: add measured cost inputs for the cfo.ai business plan
+
+● 01M4PR9NYDY86S5GAN4YBMVHKD  feat: list a run's neatlogs traces on its page
+  10-12 01:30 (9d60bd5) feat: list a run's neatlogs traces on its page
+
+● 01M4PR928X8XXWBHFPV75B52HD  "how long"
+  10-12 01:30 (323b3ce) feat: record each run attempt's neatlogs trace and its outcome
+
+● 01M4PNQ6DP3RQ84B0W2YAXDGEF  "<task-notification>\n<task-id>bfkz3yatl</task-id>\n<tool-us..."
+  10-12 00:45 (b60071b) fix: treat a budget limit during the docket poll as a pause
+
+● 01M4PNPQ1V9HKW16X30QDVN8V8  chore: record run 20 score, ECF 21 unchanged after the EC...
+  10-12 00:45 (0ebba32) chore: record run 20 score, ECF 21 unchanged after the ECF 45 fixes
+
+● 01M4PNNKQSSSCKBH3QQJ4X6Q6H  fix: match Bluebook abbreviations and never call a namele...
+  10-12 00:44 (4b4c71c) fix: match Bluebook abbreviations and never call a nameless cite the wrong case
+
+● 01M4PNNG32HYPJP4J5DZWHCQN3  "<task-notification>\n<task-id>b5wlvio6x</task-id>\n<tool-us..."
+  10-12 00:44 (0b2fba9) fix: stop extracting table entries and record Id. cites as case citations
+
+● 01M4PN0V0A1M6MN4AWYCC7T49A  "keep going"
+  10-12 00:33 (526cd3b) docs: add a README with the Mata results and how to run Gainsay
+
+● 01M4PM5SVYBA0ASE070QPFXKWV  fix: count only "Not found" as a claim that a case does n...
+  10-12 00:18 (c8ceff1) fix: count only "Not found" as a claim that a case does not exist
+
+● 01M4PM5PA355RBDK7YFTPANK5A  feat: report a case found under the cited name elsewhere ...
+  10-12 00:18 (69fddb1) feat: report a case found under the cited name elsewhere as wrong case
+
+● 01M4PM3CF35XSTE661FWHJEHW2  "so yeah we finish the product outsleves"
+  10-12 00:17 (3b25584) feat: extract quotations nested in single quotes
+
+● 01M4PK80FT8BA57VSPCPZY942P  feat: watch a docket and check only the other side's new ...
+  10-12 00:02 (2dd81a3) feat: watch a docket and check only the other side's new filings
+
+● 01M4PH7Z0JV98FHFHY42CHQDAE  feat: score check runs against the Mata sanctions opinion
+  10-11 23:27 (e3dcfa3) feat: score check runs against the Mata sanctions opinion
+
+● 01M4PH235KRN50ZFTJC5F26NTH  feat: show check runs as server-rendered pages over the l...
+  10-11 23:24 (ccb5a45) feat: show check runs as server-rendered pages over the ledger
+
+● 01M4PGSHFX7DFK7HD6PPD5PTM0  feat: derive each citation's primary status from its find...
+  10-11 23:19 (e5926f2) feat: derive each citation's primary status from its findings
+
+● 01M4PFYHHDV7VFY3E0STEGF8GN  feat: check propositions with Claude against retrieved op...
+  10-11 23:04 (3f2b38b) feat: check propositions with Claude against retrieved opinion passages
+
+● 01M4PFQFEPM2R0FW15E151FC1H  feat: check quotations and pincites against opinion text
+  10-11 23:00 (0fe7d74) feat: check quotations and pincites against opinion text
+
+● 01M4PFDATKNCV5WCCW7T1RPM0A  feat: check citation existence and identity against Court...
+  10-11 22:55 (89ef7d4) feat: check citation existence and identity against CourtListener
+
+● 01M4PET3WX6HNEYY5TGWPR6E7S  feat: extract ECF 21 case citations into the ledger
+  10-11 22:45 (5fe7863) feat: extract ECF 21 case citations into the ledger
+
+● 01M4PE0J3V99W3BFYKPXN5233K  "so yeah we finish the product outsleves\n\ngo on"
+  10-11 22:30 (b884743) feat: fetch Mata v. Avianca ECF 21 text
+
+● 01M4NNZTQ5FP50YXK60M3CDEM0  "<pasted_content id=\"cc6e\">\n# Trace an AI agent with Neatl..."
+  10-11 15:31 (50b254d) chore: add neatlogs tracing setup and smoke script
+

@@ -1,0 +1,44 @@
+Semantic changes 90299cd51e523cda49d0e885e5b945889dcbea8d..9c6bb19a118ce6b0f3a1c7b2ac80d59a5e857feb
+
+gainsay/checker.py (Python)
+  ~ class Checker body changed (3 dependents)
+  ~ method Checker.check body changed (32 dependents)
+
+gainsay/existence.py (Python)
+  ~ class Authority body changed (22 dependents)
+  ~ function check_authority body changed (3 dependents)
+  + function _docket_exists added
+
+gainsay/extract.py (Python)
+  ~ class Authority body changed (22 dependents)
+  ~ function extract body changed (19 dependents)
+  ~ function _authority_for body changed (1 dependent)
+  + function _docket_number added
+  + function _is_cross_reference added
+
+gainsay/ledger.py (Python)
+  ~ function connect body changed (17 dependents)
+  + function _add_missing_columns added
+  ~ function save_extraction body changed (5 dependents)
+
+gainsay/quotes.py (Python)
+  ~ function split_passages body changed (3 dependents)
+
+gainsay/runner.py (Python)
+  ~ function load_authorities body changed (1 dependent)
+
+gainsay/test_checker.py (Python)
+  + function test_subsequent_history_skips_quotation_and_proposition added
+
+gainsay/test_existence.py (Python)
+  + function test_unpublished_decision_exists_through_its_recap_docket added
+  + class DocketApi added
+  + method DocketApi.get_json added
+
+gainsay/test_extract.py (Python)
+  + function test_docket_numbers_are_kept_on_the_case_and_history_is_marked added
+  + function test_footnote_cross_references_are_not_case_citations added
+
+gainsay/test_quotes.py (Python)
+  + function test_bracketed_rewrites_split_the_quote_but_a_bracketed_letter_does_not added
+

@@ -1,0 +1,45 @@
+Semantic changes c3ecf9d275dc8af52484905cc54240d7435bc4b3..7bd84c573acd4946678f88d222aa6f493f84679a
+
+gainsay/existence.py (Python)
+  ~ class Authority body changed (28 dependents)
+  ~ class Lookup body changed (5 dependents)
+  ~ method Lookup.__init__ signature changed (24 dependents)
+  ~ function check_authority body changed (3 dependents)
+
+gainsay/extract.py (Python)
+  ~ class Authority body changed (28 dependents)
+  ~ function extract body changed (20 dependents)
+  + function _invented_cites added
+  + function _name_before added
+
+gainsay/ledger.py (Python)
+  ~ function _add_missing_columns body changed (1 dependent)
+  ~ function save_extraction body changed (5 dependents)
+
+gainsay/reporters.py (Python)
+  + function invented_series added
+  + function _known added
+  + function _editions added
+  + function _newest_series added
+  + function _squash added
+
+gainsay/runner.py (Python)
+  ~ function load_authorities body changed (1 dependent)
+
+gainsay/test_existence.py (Python)
+  + function test_invented_reporter_fails_existence_without_any_api_call added
+  + class NoApi added
+  + method NoApi.get_json added
+  + function test_lookups_go_out_sixty_citations_at_a_time_a_minute_apart added
+  + class CountingApi added
+  + method CountingApi.__init__ added
+  + method CountingApi.post_json added
+  + method CountingApi.response_id added
+
+gainsay/test_extract.py (Python)
+  + function test_citations_to_reporter_series_that_dont_exist_are_found added
+
+gainsay/test_reporters.py (Python)
+  + function test_series_past_the_newest_are_invented added
+  + function test_real_or_unrecognised_reporters_are_not_flagged added
+
