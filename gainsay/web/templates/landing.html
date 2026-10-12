@@ -243,7 +243,7 @@
     <div>
       <span class="badge">LePhantomCite, {{ "full eval split" if benchmark.role == "full" else "held-out excerpts" }}</span>
       <h2 id="bench-heading">Measured against Claude working from memory</h2>
-      {% set best_cited = [cited["no-tools"], cited.get("no-tools-all") or cited["no-tools"]] | max(attribute="f1") %}
+      {% set best_cited = cited["no-tools"] %}
       <p>
         {{ benchmark.size }} {{ "excerpts, the whole eval split," if benchmark.role == "full" else "held-out excerpts" }}
         from LePhantomCite, a benchmark of real brief excerpts with labelled citation errors. F1 is shown with its
@@ -266,7 +266,7 @@
       <div class="bars" role="list" aria-label="F1 on citation errors">
         <p class="bars-title">Cases that don't exist or don't match their cite</p>
         {{ bar("Gainsay", cited.gainsay, true) }}
-        {{ bar("Claude, no tools", cited.get("no-tools-all") or cited["no-tools"]) }}
+        {{ bar("Claude, no tools", cited["no-tools"]) }}
         {{ bar("Database lookup alone", cited["lookup-only"]) }}
       </div>
       {% if five %}
