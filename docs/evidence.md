@@ -34,7 +34,7 @@ Every commit carries an `Entire-Checkpoint` trailer. `docs/entire/` holds the ch
 
 ## You used cfo.ai
 
-`docs/cfo-ai-inputs.md` holds the measured costs the plan is built on. The business plan itself is exported from cfo.ai and linked in the submission.
+`docs/cfo-ai-inputs.md` holds the measured costs the plan is built on, and `docs/cfo-ai/gainsay-drivers.xlsx` is cfo.ai's export of the driver model. `docs/cfo-ai-plan.md` sums it up: at $29 a docket a month, 39 dockets cover the fixed budget. It also checks the export against its own inputs. Every formula recomputes, and running the demand forward shows cash about $53 short before break-even, with CourtListener calls passing Gainsay's default daily budget in January 2027.
 
 ## The agent recovers from failures
 

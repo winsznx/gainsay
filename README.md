@@ -88,6 +88,10 @@ cp .env.example .env    # COURTLISTENER_TOKEN, ANTHROPIC_API_KEY, NEATLOGS_API_K
 
 Loading `.env` inside parentheses keeps the keys out of the rest of your shell. Each run page links a Markdown report (`/runs/{id}/report.md`, or `scripts/export_report.py`).
 
+## Business model
+
+cfo.ai modeled Gainsay as legal software priced per watched docket, using the measured Claude cost of about 2.6 cents per citation. At $29 a docket a month, 39 dockets cover a fixed budget of $1,010.60. The export is in `docs/cfo-ai/`, and `docs/cfo-ai-plan.md` checks it and lists what it leaves out.
+
 ## Known gaps
 
 - CourtListener is the only source. Westlaw and Lexis cites stay Unverifiable unless a free source confirms them.
@@ -102,5 +106,5 @@ gainsay/        extraction, checks, ledger, scoring, benchmark, web UI (tests ne
 scripts/        fetch, extract, check, score, watch, export, benchmark
 dockets/        watched docket configs
 scoring/        the Mata answer key and every stored score
-docs/           evidence for judges, Entire output, cfo.ai inputs, demo script
+docs/           evidence for judges, Entire output, cfo.ai inputs and plan, demo script
 ```
