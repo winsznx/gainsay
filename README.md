@@ -161,9 +161,9 @@ Every run attempt is one `gainsay.check_run` trace with a `gainsay.check_citatio
 
 ![The neatlogs trace list: one row per run and Claude call](docs/proof/neatlogs-traces.png)
 
-neatlogs raised an incident on its own, "Citation verification returns an empty response": one proposition check whose Claude call came back with no evaluation of the passages. The judge assumed every answer held the verdict JSON, so an empty or cut-off answer would have raised inside the run. Commit [`6651154`](https://github.com/winsznx/gainsay/commit/6651154) records one as Unverifiable with the reason, keeps it out of the cache, and asks again on the next run.
+neatlogs raised an incident on its own, "Citation verification returns an empty response": one proposition check whose Claude call came back with no evaluation of the passages. The judge assumed every answer held the verdict JSON, so an empty or cut-off answer would have raised inside the run. Commit [`6651154`](https://github.com/winsznx/gainsay/commit/6651154) records one as Unverifiable with the reason, keeps it out of the cache, and asks again on the next run. The incident is marked Resolved in neatlogs, with a comment linking the commit.
 
-![The incident neatlogs raised](docs/proof/neatlogs-incident.png)
+![The incident neatlogs raised, now resolved](docs/proof/neatlogs-incident.png)
 
 ![The fix, commit 6651154](docs/proof/neatlogs-fix.png)
 
