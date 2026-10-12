@@ -82,7 +82,29 @@ The watcher found 17 filings by the plaintiff's side and checked them all. Notab
 
 ### A second sanctioned case: Gauthier v. Goodyear
 
-*Gauthier v. Goodyear Tire & Rubber Co.*, No. 1:23-cv-00281 (E.D. Tex.): the court's order of November 25, 2024 (ECF 48) found that the plaintiff's response (ECF 41) cited two cases that don't exist and quotations that six real cases don't contain. The answer key ([`scoring/gauthier_answer_key.json`](scoring/gauthier_answer_key.json)) labels those eight cases, each backed by words quoted from the order, and the order is blocked from the agent. Running it needs CourtListener calls to fetch the filing, so it is queued for when the daily quota refills; its score will be added here.
+*Gauthier v. Goodyear Tire & Rubber Co.*, No. 1:23-cv-00281 (E.D. Tex.): the court's order of November 25, 2024 (ECF 48) found that the plaintiff's response (ECF 41) cited two cases that don't exist and quotations that six real cases don't contain. The answer key ([`scoring/gauthier_answer_key.json`](scoring/gauthier_answer_key.json)) labels those eight cases, each backed by words quoted from the order, and the order and the court's other two rulings on it (ECF 42, 44) are blocked from the agent. The filing was registered from its RECAP PDF with [`scripts/import_filing.py`](scripts/import_filing.py), using its real CourtListener ids, because the API quota was spent.
+
+Run 50 on commit `ba16ae8`, offline, from [`scoring/results/run-50-score.json`](scoring/results/run-50-score.json):
+
+| Case cited in ECF 41 | What the court found | Gainsay's status |
+|---|---|---|
+| *Roca v. King's Creek Plantation, LLC* | does not exist | Wrong case |
+| *Beets v. Texas Instruments, Inc.* | does not exist | Unverifiable |
+| *Morales v. SimuFlite Training Int'l, Inc.* | quote not in opinion | Quote not in opinion |
+| *White v. FCI USA, Inc.* | quote not in opinion | Quote not in opinion |
+| *Burton v. Freescale Semiconductor, Inc.* | quote not in opinion | Quote not in opinion |
+| *Texas Dep't of Human Servs. v. Hinds* | quote not in opinion | Quote not in opinion |
+| *Physio GP, Inc. v. Naifeh* | quote not in opinion | Quote not in opinion |
+| *City of Midland v. O'Bryant* | quote not in opinion | Quote not in opinion |
+
+Gainsay matches the court on 6 of 8, all six misquotes, and marks none of the eight Verified. The two it doesn't match:
+
+- *Roca*: the Caselaw Access Project's volume list shows 500 F. App'x 273 is a page inside *United States v. Brooks*, 500 F. App'x 270 (pages 270 to 274), so Gainsay says the cite points to a different case.
+- *Beets* is cited only to Westlaw, so it reads Unverifiable.
+
+The court's finding for both, that no such case exists, needs a CourtListener search by name to come up empty, and this run couldn't make that search. Gainsay also flagged two citations the order doesn't discuss, which are left unscored: the filing says *Higginbotham v. Allwaste, Inc.* held that falsifying testing records can support the claim, while the opinion (page 412) is about an employee told to hide overstated profits from an auditor; and *Winters v. Houston Chronicle* is quoted accurately but cited for a point it doesn't make.
+
+Three extraction bugs this filing exposed were fixed before run 50 and measured on every stored filing and benchmark excerpt (commits `a34ff8b`, `ba16ae8`): a Texas court parenthetical that ran a citation's span into the next one, quotes inside a citation's own parenthetical, and writ history ("1994, writ denied") read as what the case holds.
 
 ### LePhantomCite benchmark
 
@@ -147,7 +169,7 @@ Loading `.env` inside parentheses keeps the keys out of the rest of your shell. 
 - Westlaw and Lexis cites stay Unverifiable unless a free source confirms them. That rule costs two of the 13 Mata findings, and it's deliberate.
 - A party name misspelled by a letter or two ("Plyer v. Doe") passes, so scanning slips in real filings don't read as wrong cases. LePhantomCite counts those as errors.
 - The Caselaw Access Project's coverage ends around 2018 for most reporters, so newer cases depend on CourtListener and its quota.
-- The Gauthier run, Mata's exhibits and the 190-excerpt test wait on the CourtListener quota; everything above was run with it spent.
+- Every result above from run 44 on was run with CourtListener's daily quota spent, answering from the ledger and the Caselaw Access Project. Offline, a case missing from both can only be Unverifiable or Wrong case, never Not found, so these numbers undercount what a live run flags.
 
 ## Glossary
 
