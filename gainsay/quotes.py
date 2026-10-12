@@ -111,6 +111,13 @@ def normalize(text: str) -> tuple[str, list[int]]:
     return "".join(chars).strip(), offsets
 
 
+def missing_passages(finding: Finding) -> list[str]:
+    """The quoted passages a failed quotation check could not find in the opinion."""
+    if finding.outcome != FAIL:
+        return []
+    return [m["passage"] for m in finding.evidence["passages"] if m["score"] < _threshold(m["passage"])]
+
+
 def _threshold(passage: str) -> int:
     return SHORT_QUOTE_SCORE if len(passage) < SHORT_QUOTE_CHARS else QUOTE_SCORE
 

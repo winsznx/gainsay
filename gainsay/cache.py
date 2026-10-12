@@ -10,7 +10,7 @@ import json
 import sqlite3
 from typing import Any, Callable
 
-from gainsay.courtlistener import CourtListenerClient
+from gainsay.courtlistener import CourtListenerClient, CourtListenerError
 from gainsay.ledger import now
 
 
@@ -67,6 +67,22 @@ class CachedCourtListener:
                 (method, path, _key(params), json.dumps(body), now()),
             )
         return body
+
+
+class OfflineClient:
+    """Stands in for the live client so a run answers only from the ledger.
+
+    A request the ledger hasn't seen fails with a reason the finding keeps,
+    instead of spending quota.
+    """
+
+    calls = 0
+
+    def get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        raise CourtListenerError(f"GET {path} is not in the ledger and this run is offline")
+
+    def post_json(self, path: str, data: dict[str, Any]) -> Any:
+        raise CourtListenerError(f"POST {path} is not in the ledger and this run is offline")
 
 
 def _key(params: dict[str, Any]) -> str:

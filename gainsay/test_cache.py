@@ -41,3 +41,19 @@ def test_cache_survives_a_new_session(tmp_path):
     api = CachedCourtListener(connect(path), no_client)
     assert api.get_json("search/", {"q": "a"}) == {"path": "search/", "params": {"q": "a"}}
     assert api.calls == 0
+
+
+def test_an_offline_run_answers_from_the_ledger_and_reports_misses(tmp_path):
+    import pytest
+    from gainsay.cache import CachedCourtListener, OfflineClient
+    from gainsay.courtlistener import CourtListenerError
+    from gainsay.ledger import connect
+    conn = connect(tmp_path / "ledger.sqlite")
+    conn.execute(
+        "INSERT INTO api_responses (method, path, params, body, fetched_at) VALUES ('GET', 'search/', '{}', '[1]', 'now')"
+    )
+    api = CachedCourtListener(conn, client_factory=OfflineClient)
+    assert api.get_json("search/") == [1]
+    with pytest.raises(CourtListenerError, match="not in the ledger and this run is offline"):
+        api.get_json("opinions/", {"cluster__id": 1})
+    assert api.calls == 0

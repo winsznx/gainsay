@@ -1,9 +1,10 @@
-"""LePhantomCite, scored on the two citation-level error types.
+"""LePhantomCite, scored on its error types.
 
 LePhantomCite (arXiv 2606.21155) labels five error types in brief excerpts.
-Checking quotes, propositions and pincites needs an opinion for nearly every
-citation, which CourtListener's quota (125 calls a day) can't cover, so this
-harness scores only non_existent_citation and case_name_mismatch.
+Each is scored on its own and together: the two citation-level types
+(non_existent_citation, case_name_mismatch), which need only a lookup, and
+all five, which add wrong_pincite, misquote and content_misrepresentation
+and need the cited opinion's text.
 
 Scoring follows the paper's released evaluator with a type filter
 (polaris_agents/evaluation/hallucination_checker_evaluator.py): a prediction
@@ -20,7 +21,11 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from gainsay.findings import FAIL, Finding
+from gainsay.quotes import missing_passages
+
 IN_SCOPE = ("non_existent_citation", "case_name_mismatch")
+ALL_TYPES = (*IN_SCOPE, "wrong_pincite", "misquote", "content_misrepresentation")
 _ELLIPSIS = re.compile(r"\.\.\.|…")
 
 
@@ -35,10 +40,15 @@ class Excerpt:
 @dataclass
 class ArmScore:
     arm: str
+    types: tuple[str, ...] = IN_SCOPE
     predictions: int = 0
     correct: int = 0
-    found: dict[str, int] = field(default_factory=lambda: {t: 0 for t in IN_SCOPE})
-    labelled: dict[str, int] = field(default_factory=lambda: {t: 0 for t in IN_SCOPE})
+    found: dict[str, int] = field(default_factory=dict)
+    labelled: dict[str, int] = field(default_factory=dict)
+
+    def __post_init__(self):
+        self.found = {t: self.found.get(t, 0) for t in self.types}
+        self.labelled = {t: self.labelled.get(t, 0) for t in self.types}
 
     @property
     def precision(self) -> float:
@@ -62,7 +72,7 @@ class ArmScore:
             "precision": round(self.precision, 3),
             "recall": round(self.recall, 3),
             "f1": round(self.f1, 3),
-            "recall_by_type": {t: f"{self.found[t]}/{self.labelled[t]}" for t in IN_SCOPE},
+            "recall_by_type": {t: f"{self.found[t]}/{self.labelled[t]}" for t in self.types},
         }
 
 
@@ -88,11 +98,13 @@ def matches(label: str, prediction: str) -> bool:
     return _ellipsis_match(g, p) or _ellipsis_match(p, g)
 
 
-def score(arm: str, excerpts: list[Excerpt], predictions: dict[int, list[str]]) -> ArmScore:
-    result = ArmScore(arm)
+def score(
+    arm: str, excerpts: list[Excerpt], predictions: dict[int, list[str]], types: tuple[str, ...] = IN_SCOPE
+) -> ArmScore:
+    result = ArmScore(arm, types)
     for excerpt in excerpts:
-        in_scope = {span: kind for span, kind in excerpt.labels.items() if kind in IN_SCOPE}
-        out_of_scope = [span for span, kind in excerpt.labels.items() if kind not in IN_SCOPE]
+        in_scope = {span: kind for span, kind in excerpt.labels.items() if kind in types}
+        out_of_scope = [span for span, kind in excerpt.labels.items() if kind not in types]
         predicted = predictions.get(excerpt.index, [])
         for span, kind in in_scope.items():
             result.labelled[kind] += 1
@@ -118,3 +130,58 @@ def _ellipsis_match(pattern: str, text: str) -> bool:
             return False
         position += len(fragment)
     return True
+
+
+def citation_spans(kind: str, cite_span: str, findings: list[Finding]) -> list[str]:
+    """The citation, when its case doesn't exist or isn't at the cite.
+
+    A full cite or a history cite is flagged; an Id. or short cite inherits
+    its case's findings, and LePhantomCite labels the full cite. A short cite
+    with no full cite in the excerpt was checked on its own, so it is flagged.
+    """
+    by_check = {f.check: f for f in findings}
+    failed = [by_check[c] for c in ("existence", "identity") if c in by_check and by_check[c].outcome == FAIL]
+    own = kind in ("full", "history") or any(f.evidence.get("untied_short") for f in failed)
+    return [cite_span] if failed and own else []
+
+
+def predicted_spans(kind: str, cite_span: str, proposition: str, findings: list[Finding]) -> list[str]:
+    """Everything Gainsay flags for one citation, as the spans LePhantomCite labels.
+
+    On top of citation_spans: a pincite outside the opinion flags the
+    citation, a quote the opinion doesn't contain flags the quoted words, and
+    an opinion that doesn't support the statement flags the statement.
+    """
+    by_check = {f.check: f for f in findings}
+    spans = citation_spans(kind, cite_span, findings)
+    if "pincite" in by_check and by_check["pincite"].outcome == FAIL and cite_span not in spans:
+        spans.append(cite_span)
+    if "quotation" in by_check:
+        spans.extend(missing_passages(by_check["quotation"]))
+    if "proposition" in by_check and by_check["proposition"].outcome == FAIL:
+        spans.append(proposition)
+    return spans
+
+
+_COURT_YEAR = re.compile(r"\([^()]*\b\d{4}\)")
+_MARKUP = r"[*_]{0,2}"
+
+
+def citation_as_written(cite_text: str) -> str:
+    """The citation from case name through its court-and-year parenthetical, without explanatory ones."""
+    match = _COURT_YEAR.search(cite_text)
+    return cite_text[: match.end()] if match else cite_text
+
+
+def raw_span(raw: str, span: str) -> str:
+    """A span from the cleaned text, as the excerpt itself writes it.
+
+    clean_text drops italic asterisks and rejoins lines, so the span is found
+    again in the raw excerpt allowing for those, and returned as written there.
+    """
+    words = span.split()
+    if not words:
+        return span
+    pattern = r"[\s*_]+".join(_MARKUP.join(re.escape(ch) for ch in word) for word in words)
+    match = re.search(pattern, raw)
+    return match.group(0) if match else span
