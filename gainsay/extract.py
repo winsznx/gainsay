@@ -32,7 +32,8 @@ _OCR_FIXES = (
 _DOUBLE_QUOTES = "\"“”"
 _SINGLE_OPENERS = "'‘"
 _SINGLE_CLOSERS = "'’"
-_SENTENCE_END = re.compile(r"[.?!][\"”’)\]]*\s+(?=[\"“(]?[A-Z])")
+# A footnote number can sit right after the period: "(1985).2 Pursuant".
+_SENTENCE_END = re.compile(r"[.?!][\"”’)\]]*(?:\d{1,2}(?=\s))?\s+(?=[\"“(]?[A-Z])")
 _ABBREVIATIONS = frozenset(
     "v vs co corp inc ltd no nos ct app cir dist supp super div mr mrs ms dr st jr sr "
     "u.s e.g i.e id fed civ ill n.y n.j cal tex ga la fla stat ann al cf sec ch pp art ex exh decl aff".split()

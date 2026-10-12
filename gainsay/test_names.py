@@ -115,3 +115,8 @@ def test_a_different_case_or_a_misspelled_party_still_does_not_match():
 
 def test_a_numbered_short_form_matches_its_case():
     assert names_match("Ezell II", "Ezell v. City of Chicago")
+
+
+def test_compass_and_apostrophe_contractions_match():
+    assert names_match("McCaskey v. Cont’l Airlines, Inc.", "McCaskey v. Continental Airlines, Inc.")
+    assert names_match("Redl v. Nw. Airlines, Inc.", "Redl v. Northwest Airlines, Inc.")

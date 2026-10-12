@@ -42,6 +42,8 @@ Verdicts:
 - does_not_support: the passages address the statement's subject and say something different, narrower, or contrary, or the passages show the case is about a different subject. Use this when you were given the whole opinion and it never makes the point.
 - insufficient: the passages don't reach the statement's subject, so support can't be judged from them.
 
+A case decided under an earlier or parallel provision with the same wording, such as the Warsaw Convention article that a Montreal Convention article carries forward, supports a statement about the current provision when it makes the same point; say in the reason which provision the case applied.
+
 List the passage ids you relied on and give a reason of one or two sentences."""
 
 VERDICT_SCHEMA = {

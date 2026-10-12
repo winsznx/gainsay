@@ -47,7 +47,11 @@ _CONTRACTIONS = {
     "la": "louisiana", "md": "maryland", "va": "virginia", "mo": "missouri", "ky": "kentucky",
     "ala": "alabama", "ark": "arkansas", "kan": "kansas", "del": "delaware", "haw": "hawaii",
     "ind": "indiana", "nev": "nevada", "neb": "nebraska", "wyo": "wyoming", "vt": "vermont",
-    "ill": "illinois",
+    "ill": "illinois", "contl": "continental", "nw": "northwest", "ne": "northeast", "se": "southeast",
+    "sw": "southwest", "profl": "professional", "regl": "regional", "fedn": "federation", "empt": "employment",
+    "admr": "administrator", "exr": "executor", "assocs": "associates", "enters": "enterprises",
+    "mktg": "marketing", "pship": "partnership", "rels": "relations", "sci": "science", "sols": "solutions",
+    "commcns": "communications",
 }
 # "R. Co." and "R.R." stand for railroad; the single letter would otherwise be dropped.
 _RAILROAD = re.compile(r"\br\.\s*(?:r\.|co\b)")

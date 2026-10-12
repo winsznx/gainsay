@@ -294,3 +294,12 @@ def test_a_short_form_name_starts_after_the_sentence_before_it():
     )
     full, short = extract(text).citations
     assert short.cite_text.startswith("Weaver, 744 F.3d at 143")
+
+
+def test_a_footnote_number_after_a_period_still_ends_the_sentence():
+    text = (
+        "Treaties are the supreme law of the land. See U.S. Const. art. VI, cl. 2; El Al Israel Airlines, Ltd. "
+        "v. Tseng, 525 U.S. 155 (1999).2 Pursuant to Article 29, the Convention preempts all claims."
+    )
+    (tseng,) = extract(text).citations
+    assert tseng.proposition == "Treaties are the supreme law of the land."
