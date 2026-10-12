@@ -44,7 +44,7 @@ flowchart LR
 | Component | Module | What it does |
 |---|---|---|
 | Docket watcher | `gainsay/watch.py`, `gainsay/dockets.py`, `scripts/watch_docket.py` | Polls the docket for new entries, picks the other side's filings by who filed them (names in `dockets/*.json`), and checks each filing without a finished run. With `--exhibits` it also checks attachments. |
-| Filing fetch | `gainsay/filings.py`, `gainsay/pdf_text.py` | Lists an entry's documents once, downloads the main PDF or an exhibit from RECAP, reuses it from disk when its hash still matches, and falls back to CourtListener's OCR text for scans. Refuses blocklisted documents. |
+| Filing fetch | `gainsay/filings.py`, `gainsay/pdf_text.py` | Lists an entry's documents once, downloads the main PDF or an exhibit from RECAP, reuses it from disk when its hash still matches, and falls back to CourtListener's OCR text for scans. `scripts/import_filing.py` registers a PDF already in hand under its real ids, with no API call. Refuses blocklisted documents. |
 | Extraction | `gainsay/extract.py`, `gainsay/reporters.py` | Cleans the text (ECF stamps, page numbers, headings, OCR slips), finds citations with eyecite, groups parallel cites, resolves *Id.* and *supra*, drops tables of contents and record cites, and keeps for each citation its case name, pincite, signal, explanatory parenthetical, the sentence it supports, and any quotation it introduces. Flags reporter series that can't exist. |
 | Existence and identity | `gainsay/existence.py`, `gainsay/names.py`, `gainsay/cap.py` | One CourtListener lookup for all of a filing's cites; for misses, CAP's volume list; then a name search; then the RECAP docket for unpublished decisions. Name matching knows Bluebook abbreviations and acronyms. |
 | Opinion text | `gainsay/opinions.py`, `gainsay/cap.py`, `gainsay/checker.py` | Reads a case from CAP when it holds it, otherwise from CourtListener, with page breaks kept only for the reporter they belong to. Each finding records where its text came from. |
@@ -92,7 +92,7 @@ Each attempt is one neatlogs trace: a `gainsay.check_run` workflow span with one
 
 - Filing text is data, never instructions. The model sees only one sentence of it, with the signal and parenthetical, inside tags that mark it as quoted.
 - No silent fallbacks: a source that fails or isn't reachable makes the finding unverifiable, with the reason.
-- Court rulings used as answer keys (Mata ECF 54; Gauthier ECF 42, 44 and 48) are blocklisted from the agent's fetch path.
+- Court rulings used as answer keys (Mata ECF 54; Gauthier ECF 42, 44 and 48) are blocklisted from the agent's fetch path and from `scripts/import_filing.py`.
 - Statuses report what sources show. The product never calls a citation fake.
 - Keys live only in `.env`; the published ledger snapshot is checked for them before it's written.
 

@@ -131,7 +131,7 @@ The difference that matters in practice: Claude with no tools answers from what 
 The short version; [docs/architecture.md](docs/architecture.md) has the full design.
 
 1. **Watch.** `scripts/watch_docket.py` polls the docket, tells the other side's filings from the court's and the client's by who filed them, and checks only filings without a finished run.
-2. **Fetch.** A filing's PDF comes from RECAP, the free archive of federal court documents, through CourtListener. A scanned PDF falls back to CourtListener's OCR text. Exhibits can be checked as filings of their own ("ECF 29-1").
+2. **Fetch.** A filing's PDF comes from RECAP, the free archive of federal court documents, through CourtListener. A scanned PDF falls back to CourtListener's OCR text. Exhibits can be checked as filings of their own ("ECF 29-1"), and a PDF already in hand is registered with `scripts/import_filing.py` under its real CourtListener ids.
 3. **Extract.** [eyecite](https://github.com/freelawproject/eyecite) finds the citations. Gainsay groups parallel cites, resolves *Id.* and *supra*, skips tables of contents and record cites, strips page stamps, keeps each citation's signal ("see", "cf.") and explanatory parenthetical, and flags reporter series that don't exist ("475 F.6th 972"). Each citation keeps the sentence it supports and any quotation it introduces.
 4. **Check.** One CourtListener lookup resolves all of a filing's cites. A cite it misses is read from the Caselaw Access Project's volume lists, which cost no quota, then searched by name, court and year, then by RECAP docket. Every cite in a parallel set has to point at the same case. Decision text comes from CAP when it holds the case and from CourtListener otherwise. Quotes are matched with [rapidfuzz](https://github.com/rapidfuzz/RapidFuzz). Claude judges the proposition from passages the code picked, with the citation's signal and parenthetical, all marked as data.
 5. **Record.** Every finding goes into a SQLite ledger with its reason and the CourtListener response or CAP file it rests on. Run pages, Markdown reports and the live site read only from the ledger.
@@ -194,6 +194,7 @@ dockets/        watched docket configs (Mata v. Avianca, Gauthier v. Goodyear)
 scoring/        answer keys and every stored score
 deploy/         the read-only ledger snapshot the live site serves
 docs/           architecture, evidence for judges, Entire output, cfo.ai plan, demo script, screenshots
+.github/        CI: the test suite on every push
 ```
 
 MIT licensed.
