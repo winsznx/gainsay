@@ -170,3 +170,25 @@ def test_unpublished_decision_exists_through_its_recap_docket():
     assert "1:13-cv-07812" in existence.reason
     assert identity.outcome == UNVERIFIABLE
     assert [p["type"] for p in api.searches] == ["o", "r"]
+
+
+def test_docket_match_needs_only_a_shared_party_word():
+    battery = Authority(7, "Advanced Battery Techs., Inc. v. Zhiguo Fu", ["2015 WL 4389893"], "2015", "nysd", "11-cv-04383")
+
+    class DocketApi(FakeApi):
+        def get_json(self, path, params):
+            if params["type"] == "r":
+                return {"results": [
+                    {"caseName": "Braun v. Fu", "docketNumber": "1:11-cv-04383", "court_id": "nysd"},
+                ]}
+            return {"results": []}
+
+    assert check(DocketApi([lookup_result("2015 WL 4389893", 400)]), battery)[0].outcome == PASS
+
+    class OtherDocketApi(DocketApi):
+        def get_json(self, path, params):
+            if params["type"] == "r":
+                return {"results": [{"caseName": "Smith v. Jones", "docketNumber": "1:11-cv-04383", "court_id": "nysd"}]}
+            return {"results": []}
+
+    assert check(OtherDocketApi([lookup_result("2015 WL 4389893", 400)]), battery)[0].outcome == FAIL

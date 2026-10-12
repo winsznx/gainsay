@@ -121,7 +121,11 @@ def _docket_exists(api: CachedCourtListener, authority: Authority) -> Finding | 
     """Existence from the RECAP docket the filing cites, when no opinion turned up.
 
     Unpublished district court orders are often cited only to Westlaw with a
-    docket number. CourtListener may hold the docket without the opinion.
+    docket number. CourtListener may hold the docket without the opinion. A
+    docket number already pins the case within its court, so the caption only
+    has to share a party word with the cited name: derivative suits are
+    captioned under the shareholder ("Braun v. Fu") but cited under the
+    company ("Advanced Battery Techs., Inc. v. Zhiguo Fu").
     """
     params = {"type": "r", "court": authority.court, "docket_number": authority.docket_number}
     try:
@@ -130,10 +134,11 @@ def _docket_exists(api: CachedCourtListener, authority: Authority) -> Finding | 
         raise
     except CourtListenerError:
         return None
+    cited_words = {w for party in parties(authority.case_name) for w in party}
     match = next(
         (r for r in results
-         if names_match(authority.case_name, r.get("caseName", ""))
-         and authority.docket_number in (r.get("docketNumber") or "").lower()),
+         if authority.docket_number in (r.get("docketNumber") or "").lower()
+         and cited_words & {w for party in parties(r.get("caseName", "")) for w in party}),
         None,
     )
     if match is None:
