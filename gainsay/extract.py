@@ -63,6 +63,11 @@ _TITLE_CASE_SHARE = 0.6
 # "Ex. A." ends a sentence on the exhibit's letter.
 _EXHIBIT_LABEL = re.compile(r"\b(?:Ex|Exh|Exhibit)s?\.?\s+[A-Z]$")
 _MIN_PROPOSITION_WORDS = 5
+_COURT_YEAR_ONLY = re.compile(r"^\([^()]*\b\d{4}\)\s*$")
+# A citation signal inside a name walked back over a sentence end ("Evolutionary. See Content ...").
+_SIGNAL_LEAD = re.compile(r"\b(?:See|see|Cf\.|cf\.|Accord|accord|Compare|compare)(?:,?\s+(?:also|e\.g\.,?|generally))?,?\s+")
+# Text eyecite folds into the front of a name: the end of a parenthetical, or an Id. cite.
+_NAME_JUNK = re.compile(r"^(?:.*\)\.\s+|(?:Id|Ibid)\.(?:\s+at\s+[\d,\s\-–]+)?\.?\s+)")
 
 
 @dataclass
@@ -346,14 +351,37 @@ def _group_span(text: str, group: list[CitationBase]) -> tuple[int, int]:
 
 
 def _name_start(text: str, citation: CitationBase) -> int:
-    """Skip lead-ins eyecite folds into the case name ("In the case of", "of").
+    """Where the case name begins, correcting eyecite's guess.
 
-    eyecite leaves "In re" out of the name, so it is pulled back in.
+    eyecite leaves "In re" out of the name, so it is pulled back in. It stops
+    a first party at an ampersand ("G. D. Searle & | Co. v. ..."), so the name
+    is walked back over it. It also starts too early after a parenthetical
+    ("Hughes, J.). In Simon v. ...") or an Id. cite ("Id. Conoshenti v. ..."),
+    and folds in lead-ins ("In the case of", "of"); those are skipped.
     """
     start = _full_span(citation)[0]
     if text[:start].endswith("In re "):
         return start - len("In re ")
-    lead_in = re.match(r"(?:(?:[Ii]n|of|the|case)\s+)+(?!re\b)", text[start : citation.span()[0]])
+    cite_start = citation.span()[0]
+    if isinstance(citation, FullCaseCitation) and text[:start].rstrip().endswith("&"):
+        name, name_start = _name_before(text, cite_start)
+        if name and name_start < start:
+            signals = list(_SIGNAL_LEAD.finditer(text, name_start, start))
+            start = signals[-1].end() if signals else name_start
+    if _COURT_YEAR_ONLY.match(text[start:cite_start]):
+        start = _name_before_parenthetical(text, start)
+    if isinstance(citation, ShortCaseCitation):
+        # A short form is one name ("Weaver, 744 F.3d at 143"); eyecite can
+        # reach back past the sentence before it ("MCMIS. Weaver").
+        segment = text[start:cite_start]
+        ends = [m.end() for m in _SENTENCE_END.finditer(segment) if not _is_abbreviation(segment, m.start())]
+        ends += [m.end() for m in re.finditer("\n", segment)]
+        if ends:
+            start += max(ends)
+    junk = _NAME_JUNK.match(text[start:cite_start])
+    if junk:
+        start += junk.end()
+    lead_in = re.match(r"(?:(?:[Ii]n|of|the|case)\s+)+(?!re\b)", text[start:cite_start])
     return start + lead_in.end() if lead_in else start
 
 
@@ -407,6 +435,7 @@ def _case_name(text: str, citation: FullCaseCitation) -> str:
     name = text[start : citation.span()[0]].strip().rstrip(",").strip()
     name = re.sub(r"\.{2,}", ".", name)
     name = re.sub(r",\s*(?:(?:Ca|Case|Civ|Civil|Adv|Pro|Cr|Crim)\.?\s+)*Nos?\.\s.*$", "", name)
+    name = re.sub(r"\s*\([^()]*\b\d{4}\)$", "", name)
     if name:
         return name
     plaintiff, defendant = citation.metadata.plaintiff, citation.metadata.defendant
@@ -448,6 +477,24 @@ def _invented_cites(text: str, known_spans: list[tuple[int, int]]) -> list[dict]
 
 _NAME_CONNECTORS = frozenset("of the & and ex rel. de la in re v. for".split())
 _LEAD_INS = frozenset("in see also cf. e.g., but compare".split())
+
+
+def _name_before_parenthetical(text: str, paren_start: int) -> int:
+    """California style puts court and year before the reporter: "(Smith v. Jones (9th Cir. 1996) 111 F.3d 1)".
+
+    The name is the "X v. Y" between the last opening parenthesis or sentence
+    end and the court-and-year parenthetical.
+    """
+    window_start = max(0, paren_start - 200)
+    window = text[window_start:paren_start]
+    boundary = window.rfind("(") + 1
+    if not boundary:
+        ends = [m.end() for m in _SENTENCE_END.finditer(window) if not _is_abbreviation(window, m.start())]
+        boundary = ends[-1] if ends else 0
+    name = window[boundary:]
+    if " v. " not in name:
+        return paren_start
+    return window_start + boundary + (len(name) - len(name.lstrip()))
 
 
 def _name_before(text: str, cite_start: int) -> tuple[str, int]:

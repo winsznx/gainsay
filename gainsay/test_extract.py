@@ -243,3 +243,54 @@ def test_numbered_affidavit_paragraphs_are_not_headings():
         "That the opinion in Shaboon v. Egyptair 2013 IL App (1st) 111279-U (Ill. App. Ct. 2013) "
         "is an unpublished opinion."
     )
+
+
+def test_a_name_eyecite_cuts_at_an_ampersand_is_recovered_whole():
+    text = (
+        "Whether confusion is likely must be considered in context.\n"
+        "*See G. D. Searle & Co. v. Charles Pfizer & Co.*, 265 F.2d 385, 388 (7th Cir. 1959)."
+    )
+    (citation,) = extract(text).citations
+    assert citation.authority.case_name == "G. D. Searle & Co. v. Charles Pfizer & Co."
+    assert citation.cite_text.startswith("G. D. Searle & Co.")
+
+
+def test_a_name_starts_after_a_closing_parenthetical_or_an_id():
+    simon = extract(
+        "”Id. (reassigning case from Hughes, J.). In Simon v. City of Clute, 825 F.2d 940 (5th Cir. 1987), "
+        "for example, the district court erred."
+    ).citations[-1]
+    assert simon.authority.case_name == "Simon v. City of Clute"
+    conoshenti = extract(
+        "the decision was causally related to taking leave. *Id.* *Conoshenti v. Public Service Electric & Gas "
+        "Company*, 364 F.3d 135, 146-47 (3d Cir. 2004)."
+    ).citations[-1]
+    assert conoshenti.authority.case_name == "Conoshenti v. Public Service Electric & Gas Company"
+
+
+def test_a_name_walked_back_stops_at_its_signal():
+    text = (
+        "the court erred by not reading the claims most favorably to Evolutionary. See Content Extraction & "
+        "Transmission LLC v. Wells Fargo Bank, Nat. Ass’n, 776 F.3d 1343, 1347 (Fed. Cir. 2014)."
+    )
+    (citation,) = extract(text).citations
+    assert citation.authority.case_name == "Content Extraction & Transmission LLC v. Wells Fargo Bank, Nat. Ass’n"
+
+
+def test_california_style_names_come_before_the_court_and_year():
+    text = (
+        "The court must follow it. (Columbia Steel Casting Co. v. Portland GE (9th Cir. 1996) "
+        "111 F.3d 1427, 1443.) The rule applies here."
+    )
+    (citation,) = extract(text).citations
+    assert citation.authority.case_name == "Columbia Steel Casting Co. v. Portland GE"
+    assert citation.authority.reporter_cites == ["111 F.3d 1427"]
+
+
+def test_a_short_form_name_starts_after_the_sentence_before_it():
+    text = (
+        "Weaver v. FMCSA, 744 F.3d 142, 145 (D.C. Cir. 2014). The agency keeps the records in MCMIS.\n"
+        "Weaver, 744 F.3d at 143. It disclosed them."
+    )
+    full, short = extract(text).citations
+    assert short.cite_text.startswith("Weaver, 744 F.3d at 143")
