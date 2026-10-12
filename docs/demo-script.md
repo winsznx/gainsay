@@ -50,7 +50,7 @@ Each run attempt is one `gainsay.check_run` trace, with a `gainsay.check_citatio
 
 Run `git log -3` in the terminal.
 
-> Every commit carries an Entire checkpoint trailer linking the coding session behind it: what was tried, what failed, and the numbers that drove the change, which also sit in each commit body. That's how the work carried across sessions, including when one coding agent ran out of context and another picked it up. `docs/entire/` has Entire's symbol-level analysis of the main fixes.
+> Every commit after the two that set Entire up carries an Entire checkpoint trailer linking the coding session behind it: what was tried, what failed, and the numbers that drove the change, which also sit in each commit body. That's how the work carried across sessions, including when one coding agent ran out of context and another picked it up. `docs/entire/` has Entire's symbol-level analysis of the main fixes.
 
 ## 2:35 to 2:55, cfo.ai
 

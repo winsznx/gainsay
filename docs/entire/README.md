@@ -1,6 +1,6 @@
 # Entire evidence
 
-Every commit in this repository carries an `Entire-Checkpoint` trailer. The checkpoint stores the agent session behind the change, with secrets redacted, under `refs/entire/checkpoints/` in the author's repository. `git log --format='%h %(trailers:key=Entire-Checkpoint,valueonly) %s'` lists the pairs.
+Every commit in this repository except the first two, which installed Entire, carries an `Entire-Checkpoint` trailer. The checkpoint stores the agent session behind the change, with secrets redacted, under `refs/entire/checkpoints/` in the author's repository. `git log --format='%h %(trailers:key=Entire-Checkpoint,valueonly) %s'` lists the pairs.
 
 The checkpoint refs themselves aren't published here: the session transcripts quote the private product brief, which stays private. Session pushing is off in `.entire/settings.json`. The files below are Entire's own output from those checkpoints.
 

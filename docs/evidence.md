@@ -38,7 +38,7 @@ The simulated crash kills the process, so its attempt's trace may never have bee
 
 ## You used Entire
 
-Every commit carries an `Entire-Checkpoint` trailer. `docs/entire/` holds the checkpoint list, entire-graph's symbol-level analysis of three checkpointed fixes, and the impact map of the existence check. See `docs/entire/README.md`.
+Every commit after the first two, which installed Entire, carries an `Entire-Checkpoint` trailer. `docs/entire/` holds the checkpoint list, entire-graph's symbol-level analysis of three checkpointed fixes, and the impact map of the existence check. See `docs/entire/README.md`.
 
 ## You used cfo.ai
 
