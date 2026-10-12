@@ -370,3 +370,23 @@ def test_prose_and_record_cites_before_a_name_are_dropped():
     assert kola.authority.case_name == "KOLA, Inc. v. United States"
     sierra = extract("See Respondent Brief 24-28, Sierra Club v. EPA, 479 F.3d 875 (D.C. Cir. 2007).").citations[0]
     assert sierra.authority.case_name == "Sierra Club v. EPA"
+
+
+def test_an_ecf_stamp_inside_a_citation_is_removed():
+    text = (
+        "The employer required an illegal act. Sabine Pilot Serv., Inc. v. Hauck, - 1 -Case 1:23-cv-00281-MAC "
+        "Document 41 Filed 10/02/24 Page 2 of 6 PageID #: 315 687 S.W.2d 733, 735 (Tex. 1985). The rule is narrow."
+    )
+    (citation,) = extract(text).citations
+    assert citation.authority.case_name == "Sabine Pilot Serv., Inc. v. Hauck"
+    assert "Document 41" not in citation.cite_text
+
+
+def test_a_dashed_page_number_at_a_line_end_is_removed():
+    text = (
+        "The employer required an illegal act. Sabine Pilot Serv., Inc. v. Hauck, - 1 -\n"
+        "Case 1:23-cv-00281-MAC Document 41 Filed 10/02/24 Page 2 of 6 PageID #: 315\n"
+        "687 S.W.2d 733, 735 (Tex. 1985). The rule is narrow."
+    )
+    (citation,) = extract(text).citations
+    assert citation.authority.case_name == "Sabine Pilot Serv., Inc. v. Hauck"

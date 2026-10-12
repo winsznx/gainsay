@@ -64,6 +64,13 @@ _TITLE_CASE_SHARE = 0.6
 # "Ex. A." ends a sentence on the exhibit's letter.
 _EXHIBIT_LABEL = re.compile(r"\b(?:Ex|Exh|Exhibit)s?\.?\s+[A-Z]$")
 _MIN_PROPOSITION_WORDS = 5
+# A page number set off by dashes ("- 1 -"), which PDFs put at the foot of a page.
+_PAGE_NUMBER = re.compile(r"(?:^|(?<=\s))-\s*\d{1,3}\s*-(?=\s|$)")
+# An ECF stamp anywhere in a line, with the page number before it and PageID after:
+# "- 1 -Case 1:23-cv-00281-MAC Document 41 Filed 10/02/24 Page 2 of 6 PageID #: 315".
+_ECF_STAMP = re.compile(
+    r"(?:-\s*\d+\s*-\s*)?Case \S+ Document \d+(?:-\d+)? Filed \d{2}/\d{2}/\d{2,4} Page \d+ of \d+(?: PageID #:\s*\d+)?"
+)
 # A case's Id. pins pages with "at"; "Id. § 5" or "Id. 7521(a)" pins a statute's section.
 _STATUTE_ID = re.compile(r"\s*id\.?\*?,?\s+(?:§|\d+(?:\.\d+|\())", re.IGNORECASE)
 # Words that introduce a case name in a sentence ("Unlike KOLA, Inc. v. United States").
@@ -134,7 +141,7 @@ def clean_text(raw: str) -> str:
     Headings carry no closing period, so a line break stays wherever a heading
     starts or ends and sentence_spans splits there.
     """
-    lines = [line.strip() for line in raw.splitlines()]
+    lines = [_PAGE_NUMBER.sub(" ", _ECF_STAMP.sub(" ", line)).strip() for line in raw.splitlines()]
     kept = [
         line
         for line in lines
