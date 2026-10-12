@@ -19,7 +19,7 @@ from gainsay.checker import CHECKS
 from gainsay.dockets import DEFAULT_DOCKET_CONFIG, known_docket, load_docket_config
 from gainsay.ledger import connect, find_filing
 from gainsay.proposition import ClaudeJudge, MissingCredentials, anthropic_client
-from gainsay.runner import VersionMismatch, run_checks
+from gainsay.runner import Simulation, VersionMismatch, paused_run, run_checks
 from gainsay.tracing import Tracing
 from gainsay.version import run_version
 
@@ -31,6 +31,10 @@ def main() -> int:
     parser.add_argument("--docket", type=Path, default=DEFAULT_DOCKET_CONFIG)
     parser.add_argument("--entry", type=int, default=DEFAULT_ENTRY)
     parser.add_argument("--resume", type=int, metavar="RUN_ID")
+    parser.add_argument("--simulate-outage-after", type=int, metavar="N",
+                        help="pause with a labelled simulated outage after N citations")
+    parser.add_argument("--simulate-crash-after", type=int, metavar="N",
+                        help="kill the process after N citations, leaving a labelled note in the ledger")
     args = parser.parse_args()
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 
@@ -49,9 +53,16 @@ def main() -> int:
     api = CachedCourtListener(conn)
     tracing = Tracing("check-citations")
     judge = ClaudeJudge(conn, tracing.wrap(client))
+    version = run_version()
+    simulation = None
+    if args.simulate_outage_after is not None or args.simulate_crash_after is not None:
+        simulation = Simulation(args.simulate_outage_after, args.simulate_crash_after)
+    resume = args.resume or paused_run(conn, filing["id"], version)
+    if resume and not args.resume:
+        print(f"resuming run {resume}, which was paused or interrupted")
     try:
         result = run_checks(
-            conn, filing["id"], run_version(), api, judge, tracing, resume_run_id=args.resume
+            conn, filing["id"], version, api, judge, tracing, resume_run_id=resume, simulation=simulation
         )
     except (VersionMismatch, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)

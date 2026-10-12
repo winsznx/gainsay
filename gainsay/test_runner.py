@@ -72,3 +72,40 @@ def test_budget_pause_is_resumed_without_repeating_findings(tmp_path):
     resumed = run_checks(conn, filing_id, "v1", FakeApi(), judge, NoTracing(), resume_run_id=paused.run_id)
     assert (resumed.run_id, resumed.status) == (paused.run_id, "complete")
     assert len(outcomes(conn, resumed.run_id)) == 10
+
+
+def test_simulated_outage_is_labelled_and_resumes(tmp_path):
+    from gainsay.runner import Simulation
+
+    conn, filing_id = setup(tmp_path)
+    paused = run_checks(conn, filing_id, "v1", FakeApi(), judge, NoTracing(), simulation=Simulation(outage_after=1))
+    assert paused.status == "paused"
+    assert "simulated" in paused.reason
+    assert len(outcomes(conn, paused.run_id)) == 5
+
+    resumed = run_checks(conn, filing_id, "v1", FakeApi(), judge, NoTracing(),
+                         resume_run_id=paused_run(conn, filing_id, "v1"))
+    assert (resumed.run_id, resumed.status) == (paused.run_id, "complete")
+    assert len(outcomes(conn, resumed.run_id)) == 10
+
+
+def test_simulated_crash_leaves_a_running_run_that_resumes(tmp_path, monkeypatch):
+    import pytest
+    from gainsay import runner
+    from gainsay.runner import Simulation
+
+    def die(code):
+        raise SystemExit(code)
+
+    monkeypatch.setattr(runner.os, "_exit", die)
+    conn, filing_id = setup(tmp_path)
+    with pytest.raises(SystemExit):
+        run_checks(conn, filing_id, "v1", FakeApi(), judge, NoTracing(), simulation=Simulation(crash_after=1))
+
+    run = conn.execute("SELECT * FROM runs").fetchone()
+    assert run["status"] == "running"
+    assert run["status_reason"] == "simulated crash after 1 citations"
+    assert paused_run(conn, filing_id, "v1") == run["id"]
+    resumed = run_checks(conn, filing_id, "v1", FakeApi(), judge, NoTracing(), resume_run_id=run["id"])
+    assert resumed.status == "complete"
+    assert len(outcomes(conn, run["id"])) == 10

@@ -2,10 +2,15 @@
 
 Each citation gets its own neatlogs span tagged with the run version. A
 CourtListener 429, an exhausted budget or a Claude rate limit pauses the run;
-resuming skips every finding already recorded.
+resuming skips every finding already recorded. A run a crash left "running"
+resumes the same way.
+
+Outages and crashes can be simulated to show recovery. Both are labelled
+"simulated" in the ledger, the run page and the trace.
 """
 
 import json
+import os
 import sqlite3
 from dataclasses import dataclass
 
@@ -31,6 +36,23 @@ class VersionMismatch(Exception):
     pass
 
 
+class SimulatedOutage(BudgetExhausted):
+    def __init__(self, after: int):
+        super().__init__("simulated", None)
+        self.args = (f"simulated CourtListener outage after {after} citations",)
+
+    def __str__(self) -> str:
+        return self.args[0]
+
+
+@dataclass(frozen=True)
+class Simulation:
+    """Fail on purpose after this many citations checked in an attempt."""
+
+    outage_after: int | None = None
+    crash_after: int | None = None
+
+
 def run_checks(
     conn: sqlite3.Connection,
     filing_id: int,
@@ -39,6 +61,7 @@ def run_checks(
     judge: Judge,
     tracing: Tracing,
     resume_run_id: int | None = None,
+    simulation: Simulation | None = None,
 ) -> RunResult:
     if resume_run_id is not None:
         run = resume_run(conn, resume_run_id)
@@ -58,11 +81,17 @@ def run_checks(
         trace_id = _trace_id(run_span)
         if trace_id:
             record_trace(conn, run_id, trace_id)
+        if run_span is not None:
+            run_span.set_attribute("gainsay.resumed", resume_run_id is not None)
+            run_span.set_attribute("gainsay.findings_already_recorded", len(done))
+        checked = 0
         try:
             checker = Checker(api, load_authorities(conn, filing_id), citations, judge)
             for citation in citations:
                 if all((citation["id"], check) in done for check in CHECKS):
                     continue
+                _maybe_fail(conn, run_id, trace_id, simulation, checked)
+                checked += 1
                 with tracing.span(
                     "gainsay.check_citation",
                     kind="CHAIN",
@@ -96,6 +125,22 @@ def run_checks(
     return result
 
 
+def _maybe_fail(
+    conn: sqlite3.Connection, run_id: int, trace_id: str | None, simulation: Simulation | None, checked: int
+) -> None:
+    if simulation is None:
+        return
+    if simulation.outage_after == checked:
+        raise SimulatedOutage(checked)
+    if simulation.crash_after == checked:
+        reason = f"simulated crash after {checked} citations"
+        with conn:
+            conn.execute("UPDATE runs SET status_reason = ? WHERE id = ?", (reason, run_id))
+        if trace_id:
+            record_trace(conn, run_id, trace_id, "crashed", reason)
+        os._exit(137)
+
+
 def _trace_id(span: object | None) -> str | None:
     if span is None:
         return None
@@ -110,9 +155,11 @@ def _record_failure(span: object | None, exc: Exception) -> None:
 
 
 def paused_run(conn: sqlite3.Connection, filing_id: int, version: str) -> int | None:
-    """A paused run of this code on this filing, which a new attempt should resume."""
+    """A run of this code on this filing that a new attempt should resume:
+    paused by the budget, or left "running" by a crash."""
     row = conn.execute(
-        "SELECT id FROM runs WHERE filing_id = ? AND version = ? AND status = 'paused' ORDER BY id DESC",
+        "SELECT id FROM runs WHERE filing_id = ? AND version = ? AND status IN ('paused', 'running') "
+        "ORDER BY id DESC",
         (filing_id, version),
     ).fetchone()
     return row["id"] if row else None
