@@ -14,7 +14,8 @@ import sqlite3
 import sys
 from pathlib import Path
 
-from gainsay.cache import CachedCourtListener
+from gainsay.cache import CachedCourtListener, OfflineClient
+from gainsay.courtlistener import CourtListenerClient
 from gainsay.cap import Cap
 from gainsay.checker import CHECKS
 from gainsay.dockets import DEFAULT_DOCKET_CONFIG, known_docket, load_docket_config
@@ -36,6 +37,8 @@ def main() -> int:
                         help="pause with a labelled simulated outage after N citations")
     parser.add_argument("--simulate-crash-after", type=int, metavar="N",
                         help="kill the process after N citations, leaving a labelled note in the ledger")
+    parser.add_argument("--courtlistener", choices=("live", "offline"), default="live",
+                        help="offline answers only from the ledger and records each miss instead of calling")
     args = parser.parse_args()
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 
@@ -51,7 +54,7 @@ def main() -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
-    api = CachedCourtListener(conn)
+    api = CachedCourtListener(conn, client_factory=OfflineClient if args.courtlistener == "offline" else CourtListenerClient)
     cap = Cap()
     tracing = Tracing("check-citations")
     judge = ClaudeJudge(conn, tracing.wrap(client))
