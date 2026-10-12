@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.venv/
+data/
+internal/
+.entire/
+.claude/
+__pycache__/
+*.pyc
+docs/
+scoring/mata_answer_key.json

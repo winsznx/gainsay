@@ -23,6 +23,9 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["gainsay"]
 
+[tool.vercel]
+entrypoint = "gainsay.web.app:app"
+
 [tool.pytest.ini_options]
 testpaths = ["gainsay"]
 

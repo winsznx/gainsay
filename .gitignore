@@ -7,3 +7,5 @@ data/
 cache/
 *.sqlite
 *.db
+.vercel
+!deploy/gainsay-demo.sqlite

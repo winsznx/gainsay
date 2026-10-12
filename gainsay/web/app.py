@@ -3,7 +3,8 @@
     .venv/bin/uvicorn gainsay.web.app:app --reload
 
 GAINSAY_LEDGER points the site at another ledger file, and GAINSAY_READ_ONLY=1
-opens it read-only, which is how the published snapshot is served.
+opens it read-only. On Vercel (VERCEL is set) the site serves the published
+snapshot in deploy/ read-only, since checks run where the keys and quota are.
 """
 
 import os
@@ -123,7 +124,10 @@ def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False)
     return app
 
 
+SNAPSHOT = HERE.parent.parent / "deploy" / "gainsay-demo.sqlite"
+_ON_VERCEL = bool(os.environ.get("VERCEL"))
+
 app = create_app(
-    Path(os.environ.get("GAINSAY_LEDGER", DEFAULT_LEDGER_PATH)),
-    read_only=os.environ.get("GAINSAY_READ_ONLY") == "1",
+    Path(os.environ.get("GAINSAY_LEDGER", SNAPSHOT if _ON_VERCEL else DEFAULT_LEDGER_PATH)),
+    read_only=_ON_VERCEL or os.environ.get("GAINSAY_READ_ONLY") == "1",
 )
