@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 from gainsay.cache import CachedCourtListener
+from gainsay.cap import Cap
 from gainsay.checker import CHECKS
 from gainsay.dockets import DEFAULT_DOCKET_CONFIG, known_docket, load_docket_config
 from gainsay.ledger import connect, find_filing
@@ -51,6 +52,7 @@ def main() -> int:
         return 1
 
     api = CachedCourtListener(conn)
+    cap = Cap()
     tracing = Tracing("check-citations")
     judge = ClaudeJudge(conn, tracing.wrap(client))
     version = run_version()
@@ -62,7 +64,8 @@ def main() -> int:
         print(f"resuming run {resume}, which was paused or interrupted")
     try:
         result = run_checks(
-            conn, filing["id"], version, api, judge, tracing, resume_run_id=resume, simulation=simulation
+            conn, filing["id"], version, api, judge, tracing, resume_run_id=resume, simulation=simulation,
+            cap=cap,
         )
     except (VersionMismatch, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -70,6 +73,7 @@ def main() -> int:
     finally:
         tracing.close()
         print(f"CourtListener calls: {api.calls}, served from ledger: {api.cache_hits}")
+        print(f"Caselaw Access Project files fetched: {cap.fetches}")
         print(f"Claude calls: {judge.calls}, served from ledger: {judge.cache_hits}")
 
     if result.status == "paused":

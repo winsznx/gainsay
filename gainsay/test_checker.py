@@ -103,3 +103,77 @@ def test_subsequent_history_skips_quotation_and_proposition():
     assert outcomes(findings)["quotation"] == NOT_APPLICABLE
     assert outcomes(findings)["proposition"] == NOT_APPLICABLE
     assert "subsequent history" in findings[3].reason
+
+
+from gainsay.cap import NOT_COVERED, STARTS, CapAnswer, CapCase, CapError
+from gainsay.opinions import parse_opinion_html
+
+KAISER_CAP = CapCase(
+    1, "Kaiser Steel Corp. v. W. S. Ranch Co.", "Kaiser Steel Corp. v. W. S. Ranch Co.", "1968-05-27",
+    "U.S.", "391 U.S. 593", 593, 595, "us", "391", "0593-01",
+)
+CAP_TEXT = (
+    "<p>The tolling effect of the automatic stay is a matter of federal law. "
+    '<a class="page-label" data-label="594">*594</a> The question is one of state law.</p>'
+)
+
+
+class FakeCap:
+    def __init__(self, answers, fail_text=False):
+        self.answers = answers
+        self.fail_text = fail_text
+        self.texts_read = 0
+
+    def lookup(self, cite):
+        return self.answers.get(cite, CapAnswer(cite, NOT_COVERED))
+
+    def opinions(self, case):
+        if self.fail_text:
+            raise CapError(f"{case.url} returned 500 (after 3 retries)")
+        self.texts_read += 1
+        return [parse_opinion_html(case.id, "majority", CAP_TEXT, "cap_html")]
+
+
+class KaiserCitedApi(FakeApi):
+    def post_json(self, path, data):
+        cluster = {**KAISER_CLUSTER, "citations": [{"volume": "391", "reporter": "U.S.", "page": "593"}]}
+        return [{"citation": "391 U.S. 593", "normalized_citations": ["391 U.S. 593"], "status": 200, "clusters": [cluster]}]
+
+
+def test_a_case_cap_holds_is_read_from_cap_without_spending_quota():
+    api = KaiserCitedApi()
+    cap = FakeCap({"391 U.S. 593": CapAnswer("391 U.S. 593", STARTS, (KAISER_CAP,))})
+    quoted = Checker(api, {1: KAISER}, CITATIONS[:2], judge, cap).check(CITATIONS[1])
+    assert outcomes(quoted)["quotation"] == PASS
+    assert quoted[2].evidence["text_source"] == "cap"
+    assert quoted[2].evidence["cap_url"] == "https://static.case.law/us/391/html/0593-01.html"
+    assert quoted[2].evidence["cluster_id"] == 107720
+    assert api.opinion_requests == 0 and cap.texts_read == 1
+
+
+def test_a_case_only_cap_holds_is_checked_against_cap_text():
+    api = FakeApi()
+    varghese = CapCase(2, "Varghese v. China Southern Airlines Co.", "", "2019-01-01", "11th Cir.",
+                       "925 F.3d 1339", 1339, 1350, "f3d", "925", "1339-01")
+    cap = FakeCap({"925 F.3d 1339": CapAnswer("925 F.3d 1339", STARTS, (varghese,))})
+    findings = Checker(api, {1: KAISER, 2: VARGHESE}, CITATIONS, judge, cap).check(CITATIONS[2])
+    assert outcomes(findings)["identity"] == PASS
+    assert findings[2].evidence["text_source"] == "cap"
+    assert "cluster_id" not in findings[2].evidence
+
+
+def test_when_cap_text_fails_courtlistener_is_used_and_the_failure_kept():
+    api = KaiserCitedApi()
+    cap = FakeCap({"391 U.S. 593": CapAnswer("391 U.S. 593", STARTS, (KAISER_CAP,))}, fail_text=True)
+    quoted = Checker(api, {1: KAISER}, CITATIONS[:2], judge, cap).check(CITATIONS[1])
+    assert quoted[2].evidence["text_source"] == "courtlistener"
+    assert "returned 500" in quoted[2].evidence["cap_error"]
+    assert api.opinion_requests == 1
+
+
+def test_one_case_starting_at_the_clusters_cite_is_its_copy_whatever_its_caption():
+    api = KaiserCitedApi()
+    renamed = CapCase(**{**KAISER_CAP.__dict__, "name": "Trivelloni-Lorenzi v. Pan American", "full_name": ""})
+    cap = FakeCap({"391 U.S. 593": CapAnswer("391 U.S. 593", STARTS, (renamed,))})
+    quoted = Checker(api, {1: KAISER}, CITATIONS[:2], judge, cap).check(CITATIONS[1])
+    assert quoted[2].evidence["text_source"] == "cap"

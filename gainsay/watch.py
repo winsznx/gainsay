@@ -8,6 +8,7 @@ and a paused run of the same code is resumed instead of started over.
 import sqlite3
 
 from gainsay.cache import CachedCourtListener
+from gainsay.cap import Cap
 from gainsay.courtlistener import CourtListenerClient
 from gainsay.extract import extract
 from gainsay.filings import Docket, fetch_filing
@@ -36,8 +37,9 @@ def check_entry(
     docket: Docket,
     entry: int,
     version: str,
+    cap: Cap | None = None,
 ) -> RunResult:
     filing_id = prepare_filing(conn, client, docket, entry)
     return run_checks(
-        conn, filing_id, version, api, judge, tracing, resume_run_id=paused_run(conn, filing_id, version)
+        conn, filing_id, version, api, judge, tracing, resume_run_id=paused_run(conn, filing_id, version), cap=cap
     )

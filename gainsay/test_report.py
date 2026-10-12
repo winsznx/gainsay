@@ -63,3 +63,11 @@ def test_list_runs_and_missing_run(tmp_path):
 def test_filing_without_case_citations_says_so():
     from gainsay.report import RunReport
     assert RunReport({"id": 1}, {}, []).headline == "This filing cites no cases."
+
+
+def test_a_case_found_in_cap_links_to_cap():
+    from gainsay.report import CheckResult, CitationReport
+    url = "https://static.case.law/f3d/516/html/1237-01.html"
+    citation = CitationReport(1, "full", "Zicherman v. Korean Air Lines Co.", "516 F.3d 1237", None, False, "p", [])
+    citation.checks["identity"] = CheckResult("pass", "found in CAP", {"source": "cap", "cap_case": {"url": url}})
+    assert citation.opinion_link == ("the Caselaw Access Project", url)

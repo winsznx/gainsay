@@ -1,26 +1,40 @@
 """Run every check for each citation in a filing.
 
 Existence and identity are decided once per case. Quotation, pincite and
-proposition need the opinion text, which is fetched once per CourtListener
-cluster.
+proposition need the opinion text, which is read once per case: from the
+Caselaw Access Project when it holds the case, since that costs no quota,
+and from CourtListener otherwise. Each finding records where its text came
+from.
 """
 
 import json
 import sqlite3
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 import anthropic
 
 from gainsay.cache import CachedCourtListener
+from gainsay.cap import STARTS, Cap, CapCase, CapError
 from gainsay.courtlistener import BudgetExhausted, CourtListenerError
 from gainsay.existence import Authority, Lookup, check_authority
 from gainsay.findings import NOT_APPLICABLE, PASS, UNVERIFIABLE, Finding
+from gainsay.names import names_match
 from gainsay.opinions import OpinionText, fetch_cluster_opinions
 from gainsay.pincite import check_pincite, first_page, parse_pin, pin_reporter
 from gainsay.proposition import Judge, check_proposition
 from gainsay.quotes import check_quotes
 
 CHECKS = ("existence", "identity", "quotation", "proposition", "pincite")
+
+
+@dataclass(frozen=True)
+class TextSource:
+    """Where a case's text can be read: a CourtListener cluster, a CAP case, or both."""
+
+    cluster_id: int | None = None
+    cites: tuple[str, ...] = ()
+    case_name: str = ""
+    cap_case: CapCase | None = None
 
 
 class Checker:
@@ -30,13 +44,15 @@ class Checker:
         authorities: dict[int, Authority],
         citations: list[sqlite3.Row],
         judge: Judge,
+        cap: Cap | None = None,
     ):
         self._api = api
+        self._cap = cap
         self._judge = judge
         self._authorities = authorities
         self._lookup = Lookup(api, list(authorities.values()))
         self._by_authority: dict[int, tuple[Finding, Finding]] = {}
-        self._opinions: dict[int, list[OpinionText] | str] = {}
+        self._texts: dict[TextSource, tuple[list[OpinionText], dict] | str] = {}
         self._pin_reporters = _pin_reporters(citations, authorities)
 
     def check(self, citation: sqlite3.Row) -> list[Finding]:
@@ -55,7 +71,7 @@ class Checker:
 
         existence, identity = self._case_findings(authority)
         reporter = self._pin_reporters.get(citation["id"]) or authority.reporter_cites[0]
-        cluster_id = _cluster_for(existence, identity)
+        source = _source_for(existence, identity)
         if citation["kind"] == "history":
             reason = "subsequent history: the filing's statement rests on the decision cited before it"
             return [
@@ -63,47 +79,49 @@ class Checker:
                 identity,
                 Finding("quotation", NOT_APPLICABLE, reason),
                 Finding("proposition", NOT_APPLICABLE, reason),
-                self._pincite(citation["pincite"], cluster_id, reporter, identity),
+                self._pincite(citation["pincite"], source, reporter, identity),
             ]
         return [
             existence,
             identity,
-            self._quotation(quotes, cluster_id, reporter, existence),
-            self._proposition(citation, cluster_id, reporter, existence, identity),
-            self._pincite(pincite, cluster_id, reporter, identity),
+            self._quotation(quotes, source, reporter, existence),
+            self._proposition(citation, source, reporter, existence, identity),
+            self._pincite(pincite, source, reporter, identity),
         ]
 
     def _case_findings(self, authority: Authority) -> tuple[Finding, Finding]:
         if authority.id not in self._by_authority:
-            self._by_authority[authority.id] = check_authority(self._api, self._lookup, authority)
+            self._by_authority[authority.id] = check_authority(self._api, self._lookup, authority, self._cap)
         return self._by_authority[authority.id]
 
     def _quotation(
-        self, quotes: list[str], cluster_id: int | None, reporter: str, existence: Finding
+        self, quotes: list[str], source: TextSource | None, reporter: str, existence: Finding
     ) -> Finding:
         if not quotes:
             return check_quotes(quotes, [], None)
-        if cluster_id is None:
+        if source is None:
             return Finding("quotation", UNVERIFIABLE, f"no opinion to compare against: {existence.reason}")
-        opinions = self._opinions_for(cluster_id)
-        if isinstance(opinions, str):
-            return Finding("quotation", UNVERIFIABLE, opinions, {"cluster_id": cluster_id})
+        text = self._text_for(source)
+        if isinstance(text, str):
+            return Finding("quotation", UNVERIFIABLE, text, _source_evidence(source))
+        opinions, provenance = text
         finding = check_quotes(quotes, opinions, first_page(reporter))
-        return replace(finding, evidence={**finding.evidence, "cluster_id": cluster_id})
+        return replace(finding, evidence={**finding.evidence, **provenance})
 
     def _proposition(
         self,
         citation: sqlite3.Row,
-        cluster_id: int | None,
+        source: TextSource | None,
         reporter: str,
         existence: Finding,
         identity: Finding,
     ) -> Finding:
-        if cluster_id is None:
+        if source is None:
             return Finding("proposition", UNVERIFIABLE, f"no opinion to compare against: {existence.reason}")
-        opinions = self._opinions_for(cluster_id)
-        if isinstance(opinions, str):
-            return Finding("proposition", UNVERIFIABLE, opinions, {"cluster_id": cluster_id})
+        text = self._text_for(source)
+        if isinstance(text, str):
+            return Finding("proposition", UNVERIFIABLE, text, _source_evidence(source))
+        opinions, provenance = text
         pin = parse_pin(citation["pincite"]) if citation["pincite"] and identity.outcome == PASS else None
         try:
             finding = check_proposition(
@@ -112,43 +130,104 @@ class Checker:
         except anthropic.RateLimitError:
             raise
         except anthropic.APIError as exc:
-            return Finding("proposition", UNVERIFIABLE, f"the model call failed: {exc}", {"cluster_id": cluster_id})
-        return replace(finding, evidence={**finding.evidence, "cluster_id": cluster_id})
+            return Finding("proposition", UNVERIFIABLE, f"the model call failed: {exc}", provenance)
+        return replace(finding, evidence={**finding.evidence, **provenance})
 
     def _pincite(
-        self, pincite: str | None, cluster_id: int | None, reporter: str, identity: Finding
+        self, pincite: str | None, source: TextSource | None, reporter: str, identity: Finding
     ) -> Finding:
         if not pincite:
             return check_pincite(pincite, None, [])
-        if identity.outcome != PASS or cluster_id is None:
+        if identity.outcome != PASS or source is None:
             return Finding("pincite", UNVERIFIABLE, f"pages can't be checked: {identity.reason}")
-        opinions = self._opinions_for(cluster_id)
-        if isinstance(opinions, str):
-            return Finding("pincite", UNVERIFIABLE, opinions, {"cluster_id": cluster_id})
+        text = self._text_for(source)
+        if isinstance(text, str):
+            return Finding("pincite", UNVERIFIABLE, text, _source_evidence(source))
+        opinions, provenance = text
         finding = check_pincite(pincite, reporter, opinions)
-        return replace(finding, evidence={**finding.evidence, "cluster_id": cluster_id})
+        return replace(finding, evidence={**finding.evidence, **provenance})
 
-    def _opinions_for(self, cluster_id: int) -> list[OpinionText] | str:
-        """Opinion texts for a cluster, or why there are none."""
-        if cluster_id not in self._opinions:
+    def _text_for(self, source: TextSource) -> tuple[list[OpinionText], dict] | str:
+        """The case's opinions and where they were read, or why there are none."""
+        if source not in self._texts:
+            self._texts[source] = self._read_text(source)
+        return self._texts[source]
+
+    def _read_text(self, source: TextSource) -> tuple[list[OpinionText], dict] | str:
+        provenance = _source_evidence(source)
+        cap_case, cap_error = (source.cap_case, None) if source.cap_case else self._cap_copy(source)
+        if cap_case is not None:
             try:
-                opinions = fetch_cluster_opinions(self._api, cluster_id)
-            except BudgetExhausted:
-                raise
-            except CourtListenerError as exc:
-                self._opinions[cluster_id] = f"could not fetch opinion text: {exc}"
+                opinions = self._cap.opinions(cap_case)
+            except CapError as exc:
+                cap_error = str(exc)
             else:
-                self._opinions[cluster_id] = opinions or f"CourtListener has no opinion text for cluster {cluster_id}"
-        return self._opinions[cluster_id]
+                if opinions:
+                    return opinions, {**provenance, "text_source": "cap", "cap_url": cap_case.url}
+                cap_error = f"{cap_case.url} has no opinion text"
+        if cap_error:
+            provenance["cap_error"] = cap_error
+        if source.cluster_id is None:
+            return f"could not read the case from the Caselaw Access Project: {cap_error}"
+        try:
+            opinions = fetch_cluster_opinions(self._api, source.cluster_id)
+        except BudgetExhausted:
+            raise
+        except CourtListenerError as exc:
+            return f"could not fetch opinion text: {exc}"
+        if not opinions:
+            return f"CourtListener has no opinion text for cluster {source.cluster_id}"
+        return opinions, {**provenance, "text_source": "courtlistener"}
+
+    def _cap_copy(self, source: TextSource) -> tuple[CapCase | None, str | None]:
+        """CAP's copy of a CourtListener cluster: the case starting at one of the cluster's own cites.
+
+        One case starting at that page is the same decision, whatever its caption
+        ("In re Air Crash Disaster" is "Trivelloni-Lorenzi v. Pan American" in CAP).
+        Several short decisions can share a page; then the name has to match.
+        """
+        if self._cap is None:
+            return None, None
+        try:
+            for cite in source.cites:
+                answer = self._cap.lookup(cite)
+                if answer.status != STARTS:
+                    continue
+                if len(answer.cases) == 1:
+                    return answer.cases[0], None
+                case = next(
+                    (c for c in answer.cases
+                     if names_match(source.case_name, c.name) or names_match(source.case_name, c.full_name)),
+                    None,
+                )
+                if case:
+                    return case, None
+        except CapError as exc:
+            return None, str(exc)
+        return None, None
 
 
-def _cluster_for(existence: Finding, identity: Finding) -> int | None:
-    """The cluster holding the named case: the one the cite resolved to, else a name-search hit."""
+def _source_for(existence: Finding, identity: Finding) -> TextSource | None:
+    """Where the named case's text is: the case the cite resolved to, else a name-search hit."""
     if identity.outcome == PASS:
-        return identity.evidence["cluster"]["cluster_id"]
+        if "cap_case" in identity.evidence:
+            return TextSource(cap_case=_cap_case(identity.evidence["cap_case"]))
+        cluster = identity.evidence["cluster"]
+        return TextSource(cluster["cluster_id"], tuple(cluster.get("citations") or ()), cluster.get("case_name") or "")
     if existence.outcome == PASS and existence.evidence.get("source") == "search":
-        return existence.evidence["candidates"][0]["cluster_id"]
+        found = existence.evidence["candidates"][0]
+        return TextSource(found["cluster_id"], tuple(found.get("citations") or ()), found.get("case_name") or "")
     return None
+
+
+def _cap_case(summary: dict) -> CapCase:
+    return CapCase(**{k: v for k, v in summary.items() if k != "url"})
+
+
+def _source_evidence(source: TextSource) -> dict:
+    if source.cap_case is not None:
+        return {"cap_url": source.cap_case.url}
+    return {"cluster_id": source.cluster_id}
 
 
 def _pin_reporters(citations: list[sqlite3.Row], authorities: dict[int, Authority]) -> dict[int, str | None]:

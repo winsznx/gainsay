@@ -16,6 +16,7 @@ from pathlib import Path
 
 from gainsay.blocklist import BlocklistedDocument
 from gainsay.cache import CachedCourtListener
+from gainsay.cap import Cap
 from gainsay.courtlistener import BudgetExhausted, CourtListenerClient, CourtListenerError
 from gainsay.dockets import (
     DEFAULT_DOCKET_CONFIG,
@@ -72,6 +73,7 @@ def main() -> int:
         return 1
 
     api = CachedCourtListener(conn)
+    cap = Cap()
     tracing = Tracing("watch-docket")
     judge = ClaudeJudge(conn, tracing.wrap(claude))
     version = run_version()
@@ -80,7 +82,7 @@ def main() -> int:
         for entry in pending:
             number = entry["entry_number"]
             try:
-                result = check_entry(conn, client, api, judge, tracing, docket, number, version)
+                result = check_entry(conn, client, api, judge, tracing, docket, number, version, cap)
             except (BlocklistedDocument, FetchError, TextUnavailable) as exc:
                 print(f"ECF {number}: skipped, {exc}")
                 continue

@@ -55,13 +55,21 @@ class CitationReport:
 
     @property
     def opinion_url(self) -> str | None:
+        link = self.opinion_link
+        return link[1] if link else None
+
+    @property
+    def opinion_link(self) -> tuple[str, str] | None:
+        """Where to read the case, as (source name, URL)."""
         for check in ("identity", "existence"):
             result = self.checks.get(check)
             if result is None or result.outcome != "pass":
                 continue
+            if "cap_case" in result.evidence:
+                return "the Caselaw Access Project", result.evidence["cap_case"]["url"]
             cluster = result.evidence.get("cluster") or (result.evidence.get("candidates") or [{}])[0]
             if cluster.get("absolute_url"):
-                return COURTLISTENER + cluster["absolute_url"]
+                return "CourtListener", COURTLISTENER + cluster["absolute_url"]
         return None
 
 

@@ -3,8 +3,9 @@
 One request returns every opinion in a cluster (lead, concurrence, dissent,
 and the combined copy some sources add). Page breaks come from the star
 pagination CourtListener keeps in the HTML: <page-number label="594"> from
-Harvard's data, <span class="star-pagination">*594</span> from others. Each
-break is stored as (offset into the text, page number).
+Harvard's data, <span class="star-pagination">*594</span> from others, and
+<a class="page-label" data-label="594"> in CAP's own case files. Each break
+is stored as (offset into the text, page number).
 """
 
 import re
@@ -79,10 +80,14 @@ def parse_opinion(opinion: dict) -> OpinionText:
         return OpinionText(opinion["id"], opinion.get("type", ""), "", "", [])
     if field == "plain_text":
         return OpinionText(opinion["id"], opinion.get("type", ""), field, opinion[field], [])
+    return parse_opinion_html(opinion["id"], opinion.get("type", ""), opinion[field], field)
+
+
+def parse_opinion_html(opinion_id: int, kind: str, html: str, source_field: str) -> OpinionText:
     parser = _PaginatedHTML()
-    parser.feed(opinion[field])
+    parser.feed(html)
     parser.close()
-    return OpinionText(opinion["id"], opinion.get("type", ""), field, parser.text(), parser.pages)
+    return OpinionText(opinion_id, kind, source_field, parser.text(), parser.pages)
 
 
 class _PaginatedHTML(HTMLParser):
@@ -95,8 +100,10 @@ class _PaginatedHTML(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         attributes = dict(attrs)
-        if tag == "page-number" or "star-pagination" in (attributes.get("class") or ""):
-            self._marker = {"tag": tag, "label": attributes.get("label"), "text": ""}
+        classes = attributes.get("class") or ""
+        if tag == "page-number" or "star-pagination" in classes or "page-label" in classes:
+            label = attributes.get("label") or attributes.get("data-label")
+            self._marker = {"tag": tag, "label": label, "text": ""}
         elif tag in _BLOCK_TAGS:
             self._append("\n")
 

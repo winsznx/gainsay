@@ -251,3 +251,64 @@ def test_page_shared_by_several_decisions_is_not_the_wrong_case():
     existence, identity = check(api, spinella)
     assert (existence.outcome, identity.outcome) == (PASS, PASS)
     assert "holds more than one decision" in identity.reason
+
+
+from gainsay.cap import INSIDE, NOT_COVERED, STARTS, CapAnswer, CapCase, CapError
+
+
+class FakeCap:
+    def __init__(self, answers=None, error=None):
+        self.answers = answers or {}
+        self.error = error
+
+    def lookup(self, cite):
+        if self.error:
+            raise CapError(self.error)
+        return self.answers.get(cite, CapAnswer(cite, NOT_COVERED))
+
+
+def cap_case(name, cite, first, last):
+    return CapCase(1, name, name, "2019-06-14", "D.C. Cir.", cite, first, last, "f3d", cite.split()[0], f"{first}-01")
+
+
+VARGHESE = Authority(2, "Varghese v. China Southern Airlines Co., Ltd.", ["925 F.3d 1339"], "2019", "ca11")
+
+
+def test_a_cite_courtlistener_misses_passes_when_cap_holds_the_named_case():
+    api = FakeApi([lookup_result("516 F.3d 1237", 404)])
+    cap = FakeCap({"516 F.3d 1237": CapAnswer(
+        "516 F.3d 1237", STARTS, (cap_case("Zicherman v. Korean Air Lines Co.", "516 F.3d 1237", 1237, 1260),),
+        "https://static.case.law/f3d/516/CasesMetadata.json",
+    )})
+    existence, identity = check_authority(api, Lookup(api, [ZICHERMAN]), ZICHERMAN, cap)
+    assert (existence.outcome, identity.outcome) == (PASS, PASS)
+    assert "in the Caselaw Access Project" in existence.reason
+    assert existence.evidence["cap_case"]["url"] == "https://static.case.law/f3d/516/html/1237-01.html"
+    assert api.searches == []
+
+
+def test_a_page_inside_another_case_in_cap_fails_identity():
+    api = FakeApi([lookup_result("925 F.3d 1339", 404)])
+    cap = FakeCap({"925 F.3d 1339": CapAnswer(
+        "925 F.3d 1339", INSIDE, (cap_case("J.D. v. Azar", "925 F.3d 1291", 1291, 1349),),
+        "https://static.case.law/f3d/925/CasesMetadata.json",
+    )})
+    existence, identity = check_authority(api, Lookup(api, [VARGHESE]), VARGHESE, cap)
+    assert existence.outcome == FAIL
+    assert identity.outcome == FAIL
+    assert "inside J.D. v. Azar, 925 F.3d 1291 (pages 1291-1349)" in identity.reason
+    assert identity.evidence["cap"][0]["source_url"].endswith("/925/CasesMetadata.json")
+
+
+def test_without_a_cap_answer_an_unresolved_cite_stays_unverifiable():
+    api = FakeApi([lookup_result("925 F.3d 1339", 404)])
+    existence, identity = check_authority(api, Lookup(api, [VARGHESE]), VARGHESE, FakeCap())
+    assert identity.outcome == UNVERIFIABLE
+
+
+def test_a_cap_failure_is_recorded_not_skipped():
+    api = FakeApi([lookup_result("925 F.3d 1339", 404)])
+    existence, identity = check_authority(api, Lookup(api, [VARGHESE]), VARGHESE, FakeCap(error="static.case.law timed out"))
+    assert identity.outcome == UNVERIFIABLE
+    assert "the Caselaw Access Project could not be read: static.case.law timed out" in identity.reason
+    assert api.searches

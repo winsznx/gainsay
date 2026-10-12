@@ -120,7 +120,7 @@
         {% endfor %}
       </ul>
     </div>
-    {% if c.opinion_url %}<a class="insp-link" href="{{ c.opinion_url }}">Read the opinion on CourtListener{{ icon("external-link", 14) }}</a>{% endif %}
+    {% if c.opinion_link %}<a class="insp-link" href="{{ c.opinion_link[1] }}">Read the opinion on {{ c.opinion_link[0] }}{{ icon("external-link", 14) }}</a>{% endif %}
 
     {% if report.traces %}
     <div class="side-card">

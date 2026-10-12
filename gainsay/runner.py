@@ -18,6 +18,7 @@ from datetime import UTC, datetime, timedelta
 import anthropic
 
 from gainsay.cache import CachedCourtListener
+from gainsay.cap import Cap
 from gainsay.checker import CHECKS, Checker
 from gainsay.courtlistener import BudgetExhausted, CourtListenerError
 from gainsay.existence import Authority
@@ -74,6 +75,7 @@ def run_checks(
     tracing: Tracing,
     resume_run_id: int | None = None,
     simulation: Simulation | None = None,
+    cap: Cap | None = None,
 ) -> RunResult:
     if resume_run_id is not None:
         run = resume_run(conn, resume_run_id)
@@ -109,7 +111,7 @@ def run_checks(
         )
         upcoming = pending
         try:
-            checker = Checker(api, authorities, citations, judge)
+            checker = Checker(api, authorities, citations, judge, cap)
             for position, citation in enumerate(pending):
                 upcoming = pending[position:]
                 _maybe_fail(conn, run_id, trace_id, simulation, checked)

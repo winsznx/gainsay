@@ -11,6 +11,12 @@ Otherwise the case is searched by name, court and year:
   at a different page. Otherwise a cite that resolves to nothing is
   unverifiable, since an empty page in CourtListener isn't proof the cite is
   wrong.
+
+A cite CourtListener can't resolve is also read from the Caselaw Access
+Project's volume list, which costs no quota. The named case starting at the
+cited page passes both checks without a name search. A different case there,
+or a page that falls inside another case, fails identity: CAP lists every
+case in the volumes it holds.
 """
 
 import logging
@@ -20,6 +26,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from gainsay.cache import CachedCourtListener
+from gainsay.cap import EMPTY, INSIDE, STARTS, Cap, CapAnswer, CapCase, CapError
 from gainsay.courtlistener import BudgetExhausted, CourtListenerError
 from gainsay.findings import FAIL, PASS, UNVERIFIABLE, Finding
 from gainsay.jurisdiction import court_system_fits
@@ -80,7 +87,7 @@ class Lookup:
 
 
 def check_authority(
-    api: CachedCourtListener, lookup: Lookup, authority: Authority
+    api: CachedCourtListener, lookup: Lookup, authority: Authority, cap: Cap | None = None
 ) -> tuple[Finding, Finding]:
     statuses: dict[str, int | None] = {}
     resolved: list[tuple[str, dict]] = []
@@ -100,12 +107,22 @@ def check_authority(
         evidence = {"source": "reporters-db", "reason": authority.invented_reporter}
         return Finding("existence", FAIL, reason, evidence), Finding("identity", UNVERIFIABLE, reason, evidence)
     if not authority.case_name.strip():
-        return _nameless(authority, resolved, statuses, lookup_evidence)
+        return _nameless(authority, resolved, statuses, lookup_evidence, cap)
     for cite, cluster in resolved:
         matched_name = _matched_name(authority.case_name, cluster)
         if matched_name:
             evidence = {**lookup_evidence, "cite": cite, "cluster": _cluster_summary(cluster)}
             reason = f"{cite} resolves to {_shorten(matched_name)} ({cluster.get('date_filed')})"
+            return Finding("existence", PASS, reason, evidence), Finding("identity", PASS, reason, evidence)
+
+    cap_answers, cap_error = _ask_cap(cap, authority.reporter_cites)
+    if cap_error:
+        lookup_evidence = {**lookup_evidence, "cap_error": cap_error}
+    for answer in cap_answers:
+        case = next((c for c in answer.cases if answer.status == STARTS and _cap_names_match(authority, c)), None)
+        if case:
+            evidence = {**lookup_evidence, "source": "cap", "cap": answer.evidence(), "cap_case": case.summary()}
+            reason = f"{answer.cite} is {_shorten(case.name)} ({case.decision_date}) in the Caselaw Access Project"
             return Finding("existence", PASS, reason, evidence), Finding("identity", PASS, reason, evidence)
 
     existence, found = _search_by_name(api, authority)
@@ -149,14 +166,48 @@ def check_authority(
             f"{_shorten(found['caseName'])} is reported at {cites}",
             {**lookup_evidence, "found": _search_summary(found)},
         )
-    else:
+    elif contradictions := [r for a in cap_answers if (r := _cap_contradiction(authority, a))]:
         identity = Finding(
             "identity",
-            UNVERIFIABLE,
-            "; ".join(_unresolved_reason(c, s) for c, s in statuses.items()),
-            lookup_evidence,
+            FAIL,
+            "; ".join(contradictions),
+            {**lookup_evidence, "cap": [a.evidence() for a in cap_answers]},
         )
+    else:
+        reasons = [_unresolved_reason(c, s) for c, s in statuses.items()]
+        if cap_error:
+            reasons.append(f"the Caselaw Access Project could not be read: {cap_error}")
+        identity = Finding("identity", UNVERIFIABLE, "; ".join(reasons), lookup_evidence)
     return existence, identity
+
+
+def _ask_cap(cap: Cap | None, cites: list[str]) -> tuple[list[CapAnswer], str | None]:
+    if cap is None:
+        return [], None
+    try:
+        return [cap.lookup(cite) for cite in cites], None
+    except CapError as exc:
+        return [], str(exc)
+
+
+def _cap_names_match(authority: Authority, case: CapCase) -> bool:
+    return names_match(authority.case_name, case.name) or names_match(authority.case_name, case.full_name)
+
+
+def _cap_contradiction(authority: Authority, answer: CapAnswer) -> str | None:
+    """Why CAP shows the cite doesn't point at the named case, if it does."""
+    if answer.status == STARTS:
+        names = "; ".join(_shorten(c.name) for c in answer.cases)
+        return f"{answer.cite} is {names} in the Caselaw Access Project, not {authority.case_name}"
+    if answer.status == INSIDE:
+        case = answer.cases[0]
+        return (
+            f"no case begins at {answer.cite} in the Caselaw Access Project; that page is inside "
+            f"{_shorten(case.name)}, {case.cite} (pages {case.first_page}-{case.last_page})"
+        )
+    if answer.status == EMPTY:
+        return f"the Caselaw Access Project's volume holds no case at {answer.cite}"
+    return None
 
 
 def _only_database_cites(authority: Authority) -> bool:
@@ -220,6 +271,7 @@ def _nameless(
     resolved: list[tuple[str, dict]],
     statuses: dict[str, int | None],
     lookup_evidence: dict,
+    cap: Cap | None = None,
 ) -> tuple[Finding, Finding]:
     """A cite the filing gives without a case name can't be matched by name."""
     no_name = "the filing gives no case name for this cite"
@@ -229,6 +281,17 @@ def _nameless(
         name = _shorten(cluster.get("case_name") or cluster.get("case_name_full") or "a case")
         return (
             Finding("existence", PASS, f"{cite} resolves to {name} ({cluster.get('date_filed')})", evidence),
+            Finding("identity", UNVERIFIABLE, f"{no_name}, so {name} can't be compared", evidence),
+        )
+    cap_answers, _ = _ask_cap(cap, authority.reporter_cites)
+    starting = next((a for a in cap_answers if a.status == STARTS), None)
+    if starting:
+        case = starting.cases[0]
+        evidence = {**lookup_evidence, "source": "cap", "cap": starting.evidence(), "cap_case": case.summary()}
+        name = _shorten(case.name)
+        found = f"{starting.cite} is {name} ({case.decision_date}) in the Caselaw Access Project"
+        return (
+            Finding("existence", PASS, found, evidence),
             Finding("identity", UNVERIFIABLE, f"{no_name}, so {name} can't be compared", evidence),
         )
     unresolved = "; ".join(_unresolved_reason(c, s) for c, s in statuses.items())
