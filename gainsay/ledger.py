@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS authorities (
     reporter_cites TEXT NOT NULL,
     year TEXT,
     court TEXT,
+    docket_number TEXT,
     UNIQUE (filing_id, ordinal)
 );
 
@@ -131,7 +132,16 @@ def connect(path: Path = DEFAULT_LEDGER_PATH) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(SCHEMA)
+    _add_missing_columns(conn)
     return conn
+
+
+def _add_missing_columns(conn: sqlite3.Connection) -> None:
+    """Columns added after a ledger was created. CREATE TABLE IF NOT EXISTS skips them."""
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(authorities)")}
+    if "docket_number" not in columns:
+        with conn:
+            conn.execute("ALTER TABLE authorities ADD COLUMN docket_number TEXT")
 
 
 def find_filing(conn: sqlite3.Connection, docket_id: int, entry_number: int) -> sqlite3.Row | None:
@@ -168,8 +178,8 @@ def save_extraction(conn: sqlite3.Connection, filing_id: int, extraction: Extrac
         authority_ids = {}
         for authority in extraction.authorities:
             authority_ids[authority.ordinal] = conn.execute(
-                "INSERT INTO authorities (filing_id, ordinal, case_name, reporter_cites, year, court) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO authorities (filing_id, ordinal, case_name, reporter_cites, year, court, docket_number) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (
                     filing_id,
                     authority.ordinal,
@@ -177,6 +187,7 @@ def save_extraction(conn: sqlite3.Connection, filing_id: int, extraction: Extrac
                     json.dumps(authority.reporter_cites),
                     authority.year,
                     authority.court,
+                    authority.docket_number,
                 ),
             ).lastrowid
         for citation in extraction.citations:

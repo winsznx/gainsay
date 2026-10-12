@@ -51,3 +51,11 @@ def test_normalize_keeps_offsets_into_the_source():
     text, offsets = normalize("A  “Quoted”—word")
     assert text == "a quoted-word"
     assert offsets[text.index("q")] == 4
+
+
+def test_bracketed_rewrites_split_the_quote_but_a_bracketed_letter_does_not():
+    assert split_passages("the law firm could not have objectively believed [the statements] were true and correct") == [
+        "the law firm could not have objectively believed",
+        "were true and correct",
+    ]
+    assert split_passages("[T]hreadbare recitals of the elements") == ["[T]hreadbare recitals of the elements"]

@@ -150,3 +150,23 @@ def test_nameless_cite_is_not_called_the_wrong_case():
 
     missing = FakeApi([lookup_result("82 F. App'x 723", 404)])
     assert [f.outcome for f in check(missing, nameless)] == [UNVERIFIABLE, UNVERIFIABLE]
+
+
+def test_unpublished_decision_exists_through_its_recap_docket():
+    rivas = Authority(6, "Rivas v. Bowling Green Assocs., L.P.", ["2014 WL 3694983"], "2014", "nysd", "13-cv-07812")
+
+    class DocketApi(FakeApi):
+        def get_json(self, path, params):
+            self.searches.append(params)
+            if params["type"] == "r":
+                return {"results": [{"caseName": "Rivas v. Bowling Green Associates, L.P.", "docketNumber": "1:13-cv-07812",
+                                     "court_id": "nysd", "docket_id": 8, "absolute_url": "/docket/8/rivas/"}]}
+            return {"results": []}
+
+    api = DocketApi([lookup_result("2014 WL 3694983", 400)])
+    existence, identity = check(api, rivas)
+    assert existence.outcome == PASS
+    assert existence.evidence["source"] == "recap-docket"
+    assert "1:13-cv-07812" in existence.reason
+    assert identity.outcome == UNVERIFIABLE
+    assert [p["type"] for p in api.searches] == ["o", "r"]

@@ -127,6 +127,7 @@ def load_authorities(conn: sqlite3.Connection, filing_id: int) -> dict[int, Auth
             reporter_cites=json.loads(row["reporter_cites"]),
             year=row["year"],
             court=row["court"],
+            docket_number=row["docket_number"],
         )
         for row in rows
     }

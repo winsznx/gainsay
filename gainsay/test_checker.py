@@ -95,3 +95,11 @@ def test_checks_each_citation_and_fetches_each_cluster_once():
         "proposition": UNVERIFIABLE, "pincite": NOT_APPLICABLE,
     }
     assert api.opinion_requests == 1
+
+
+def test_subsequent_history_skips_quotation_and_proposition():
+    history = {**citation(4, 1, "history", "aff'd, 88 S. Ct. 1753 (1968)"), "quotes": json.dumps(["a quote here at length"])}
+    findings = Checker(FakeApi(), {1: KAISER, 2: VARGHESE}, CITATIONS + [history], judge).check(history)
+    assert outcomes(findings)["quotation"] == NOT_APPLICABLE
+    assert outcomes(findings)["proposition"] == NOT_APPLICABLE
+    assert "subsequent history" in findings[3].reason

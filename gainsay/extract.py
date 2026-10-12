@@ -50,6 +50,8 @@ _RECORD_REFERENCE = re.compile(
 )
 # Cites whose pages are paragraphs or star pages: neutral and database cites.
 _YEAR_FIRST_CITE = re.compile(r"^\d{4} ")
+# A district court docket number as cited: "No. 13-CV-7812 PKC", "No. 13 CIV. 4861 ER".
+_DOCKET_NUMBER = re.compile(r",\s*Nos?\.\s*(\d{2})[\s-]*(cv|civ|cr)\.?[\s-]*(\d+)", re.IGNORECASE)
 _SIGNALS = re.compile(r"\b(?:see|also|cf|e\.g|accord|but|compare|and|with)\b\.?,?", re.I)
 _MIN_PROPOSITION_WORDS = 5
 
@@ -61,6 +63,7 @@ class Authority:
     reporter_cites: list[str]
     year: str | None
     court: str | None
+    docket_number: str | None = None
 
 
 @dataclass
@@ -202,6 +205,7 @@ def extract(raw_text: str) -> Extraction:
     for group, span in zip(groups, spans):
         lead = group[0]
         previous = occurrences[-1] if occurrences else None
+        kind = _kind(lead)
         if isinstance(lead, IdCitation):
             if previous is None or _refers_to_record(text, previous, span, _pincite(lead)):
                 record_references += 1
@@ -209,12 +213,16 @@ def extract(raw_text: str) -> Extraction:
             authority = previous.authority
         elif previous and previous.authority and _is_history(text, previous.span[1], lead):
             authority = _authority_for(text, group, antecedents, authorities, previous.authority.case_name)
+            kind = "history"
         else:
             authority = _authority_for(text, group, antecedents, authorities)
+        if authority is None and _is_cross_reference(lead):
+            record_references += 1
+            continue
         occurrences.append(
             Occurrence(
                 ordinal=len(occurrences) + 1,
-                kind=_kind(lead),
+                kind=kind,
                 authority=authority,
                 cite_text=text[span[0] : span[1]],
                 pincite=_pincite(lead),
@@ -317,6 +325,7 @@ def _authority_for(
         reporter_cites=cites,
         year=named.metadata.year,
         court=named.metadata.court,
+        docket_number=_docket_number(text, named),
     )
     authorities.append(authority)
     return authority
@@ -340,6 +349,24 @@ def _refers_to_record(text: str, previous: "Occurrence", span: tuple[int, int], 
         return True
     paged = previous.authority and not any(_YEAR_FIRST_CITE.match(c) for c in previous.authority.reporter_cites)
     return bool(pincite and "¶" in pincite and paged)
+
+
+def _docket_number(text: str, citation: FullCaseCitation) -> str | None:
+    """The docket number cited with an unpublished decision, as "13-cv-07812"."""
+    match = _DOCKET_NUMBER.search(text[_name_start(text, citation) : citation.span()[0]])
+    if not match:
+        return None
+    year, case_type, number = match.groups()
+    case_type = "cv" if case_type.lower() in ("cv", "civ") else case_type.lower()
+    return f"{year}-{case_type}-{int(number):05d}"
+
+
+def _is_cross_reference(citation: CitationBase) -> bool:
+    """"supra at n. 4" points to the filing's own footnote, not a case."""
+    if not isinstance(citation, SupraCitation):
+        return False
+    guess = citation.metadata.antecedent_guess or ""
+    return not guess[:1].isupper()
 
 
 def _is_history(text: str, previous_end: int, citation: CitationBase) -> bool:

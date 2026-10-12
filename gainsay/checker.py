@@ -14,7 +14,7 @@ import anthropic
 from gainsay.cache import CachedCourtListener
 from gainsay.courtlistener import BudgetExhausted, CourtListenerError
 from gainsay.existence import Authority, Lookup, check_authority
-from gainsay.findings import PASS, UNVERIFIABLE, Finding
+from gainsay.findings import NOT_APPLICABLE, PASS, UNVERIFIABLE, Finding
 from gainsay.opinions import OpinionText, fetch_cluster_opinions
 from gainsay.pincite import check_pincite, first_page, parse_pin, pin_reporter
 from gainsay.proposition import Judge, check_proposition
@@ -56,6 +56,15 @@ class Checker:
         existence, identity = self._case_findings(authority)
         reporter = self._pin_reporters.get(citation["id"]) or authority.reporter_cites[0]
         cluster_id = _cluster_for(existence, identity)
+        if citation["kind"] == "history":
+            reason = "subsequent history: the filing's statement rests on the decision cited before it"
+            return [
+                existence,
+                identity,
+                Finding("quotation", NOT_APPLICABLE, reason),
+                Finding("proposition", NOT_APPLICABLE, reason),
+                self._pincite(citation["pincite"], cluster_id, reporter, identity),
+            ]
         return [
             existence,
             identity,

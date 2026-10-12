@@ -42,6 +42,7 @@ class Authority:
     reporter_cites: list[str]
     year: str | None
     court: str | None
+    docket_number: str | None = None
 
 
 class Lookup:
@@ -85,6 +86,8 @@ def check_authority(
             return Finding("existence", PASS, reason, evidence), Finding("identity", PASS, reason, evidence)
 
     existence, found = _search_by_name(api, authority)
+    if existence.outcome == FAIL and authority.docket_number and authority.court:
+        existence = _docket_exists(api, authority) or existence
     if resolved:
         others = [_cluster_summary(c) for _, c in resolved]
         identity = Finding(
@@ -112,6 +115,47 @@ def check_authority(
             lookup_evidence,
         )
     return existence, identity
+
+
+def _docket_exists(api: CachedCourtListener, authority: Authority) -> Finding | None:
+    """Existence from the RECAP docket the filing cites, when no opinion turned up.
+
+    Unpublished district court orders are often cited only to Westlaw with a
+    docket number. CourtListener may hold the docket without the opinion.
+    """
+    params = {"type": "r", "court": authority.court, "docket_number": authority.docket_number}
+    try:
+        results = api.get_json(SEARCH_PATH, params)["results"]
+    except BudgetExhausted:
+        raise
+    except CourtListenerError:
+        return None
+    match = next(
+        (r for r in results
+         if names_match(authority.case_name, r.get("caseName", ""))
+         and authority.docket_number in (r.get("docketNumber") or "").lower()),
+        None,
+    )
+    if match is None:
+        return None
+    return Finding(
+        "existence",
+        PASS,
+        f"no opinion in CourtListener, but RECAP has docket {match['docketNumber']} "
+        f"({match.get('court_id')}): {_shorten(match['caseName'])}",
+        {
+            "source": "recap-docket",
+            "query": params,
+            "docket": {
+                "docket_id": match.get("docket_id"),
+                "case_name": match.get("caseName"),
+                "docket_number": match.get("docketNumber"),
+                "court_id": match.get("court_id"),
+                "absolute_url": match.get("absolute_url"),
+            },
+            "api_response_id": api.response_id("GET", SEARCH_PATH, params),
+        },
+    )
 
 
 def _nameless(

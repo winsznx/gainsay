@@ -61,8 +61,11 @@ def check_quotes(quotes: list[str], opinions: list[OpinionText], first_page: int
 
 
 def split_passages(quote: str) -> list[str]:
+    """Ellipses and bracketed rewrites of several words ("[the statements]")
+    split a quote, since neither is the court's own text. A bracketed letter
+    ("[T]hreadbare") stays, as it only changes case."""
     passages = []
-    for part in re.split(r"\.\s?\.\s?\.|…", quote):
+    for part in re.split(r"\.\s?\.\s?\.|…|\[[^\]]*\s[^\]]*\]", quote):
         if len(part) > LONG_SEGMENT_CHARS:
             passages.extend(re.split(r"(?<=[.?!])\s+(?=[A-Z])", part))
         else:

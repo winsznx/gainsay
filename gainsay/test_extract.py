@@ -147,3 +147,22 @@ def test_docket_numbers_leave_the_case_name():
     text = "The court declined. Rivas v. Bowling Green Assocs., L.P., No. 13-CV-7812 PKC, 2014 WL 3694983 (S.D.N.Y. 2014)."
     (citation,) = extract(text).citations
     assert citation.authority.case_name == "Rivas v. Bowling Green Assocs., L.P."
+
+
+def test_docket_numbers_are_kept_on_the_case_and_history_is_marked():
+    text = (
+        "Sanctions need bad faith. Rivas v. Bowling Green Assocs., L.P., No. 13-CV-7812 PKC, "
+        "2014 WL 3694983, at *1 (S.D.N.Y. July 24, 2014). The standard is high. Rankin v. City of Niagara Falls, "
+        "293 F.R.D. 375, 390 (W.D.N.Y. 2013), aff'd, 569 F. App'x 25 (2d Cir. 2014)."
+    )
+    rivas, rankin, affirmance = extract(text).citations
+    assert rivas.authority.docket_number == "13-cv-07812"
+    assert (rankin.kind, affirmance.kind) == ("full", "history")
+    assert affirmance.authority.case_name == "Rankin v. City of Niagara Falls"
+
+
+def test_footnote_cross_references_are_not_case_citations():
+    text = "As discussed supra at n. 4, counsel acted in good faith. Chambers v. NASCO, Inc., 501 U.S. 32, 46 (1991)."
+    extraction = extract(text)
+    assert [c.kind for c in extraction.citations] == ["full"]
+    assert extraction.record_references == 1
