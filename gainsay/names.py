@@ -51,7 +51,7 @@ _CONTRACTIONS = {
     "sw": "southwest", "profl": "professional", "regl": "regional", "fedn": "federation", "empt": "employment",
     "admr": "administrator", "exr": "executor", "assocs": "associates", "enters": "enterprises",
     "mktg": "marketing", "pship": "partnership", "rels": "relations", "sci": "science", "sols": "solutions",
-    "commcns": "communications",
+    "commcns": "communications", "cnty": "county",
 }
 # "R. Co." and "R.R." stand for railroad; the single letter would otherwise be dropped.
 _RAILROAD = re.compile(r"\br\.\s*(?:r\.|co\b)")
@@ -74,12 +74,17 @@ def names_match(cited: str, found: str) -> bool:
     ]
     if not cited_parties or not found_tokens:
         return fuzz.token_sort_ratio(cited.lower(), found.lower()) >= 90
-    # "GE" for "General Electric": initials of consecutive words in a found party.
+    # "GE" for "General Electric", "DOL" for "Department of Labor": initials of
+    # consecutive words in a found party, with and without its small words.
+    spelled = [
+        [_CONTRACTIONS.get(w, w) for w in re.sub(r"[^a-z]+", " ", re.sub(r"['’]", "", part.lower())).split()]
+        for part in _PARTY_SEPARATOR.split(found)
+    ]
     found_tokens += [
-        "".join(w[0] for w in party[i : i + n])
-        for party in found_parties
+        "".join(w[0] for w in words[i : i + n])
+        for words in [*found_parties, *spelled]
         for n in range(2, _MAX_ACRONYM + 1)
-        for i in range(len(party) - n + 1)
+        for i in range(len(words) - n + 1)
     ]
     coverage = _SINGLE_PARTY_COVERAGE if len(cited_parties) == 1 else _PARTY_COVERAGE
     found_initials = {_initials(part) for part in _PARTY_SEPARATOR.split(found)}

@@ -363,3 +363,10 @@ def test_an_id_pinned_to_a_section_is_a_statute():
         "The statute forbids it. Id. 448.102(3). Removal requires cause. Id. 7521(a)."
     )
     assert [c.kind for c in extract(text).citations] == ["full"]
+
+
+def test_prose_and_record_cites_before_a_name_are_dropped():
+    kola = extract("Unlike KOLA, Inc. v. United States, 882 F.2d 361 (9th Cir. 1989), the agency acted.").citations[0]
+    assert kola.authority.case_name == "KOLA, Inc. v. United States"
+    sierra = extract("See Respondent Brief 24-28, Sierra Club v. EPA, 479 F.3d 875 (D.C. Cir. 2007).").citations[0]
+    assert sierra.authority.case_name == "Sierra Club v. EPA"

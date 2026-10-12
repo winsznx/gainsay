@@ -120,3 +120,8 @@ def test_a_numbered_short_form_matches_its_case():
 def test_compass_and_apostrophe_contractions_match():
     assert names_match("McCaskey v. Cont’l Airlines, Inc.", "McCaskey v. Continental Airlines, Inc.")
     assert names_match("Redl v. Nw. Airlines, Inc.", "Redl v. Northwest Airlines, Inc.")
+
+
+def test_agency_acronyms_and_county_match():
+    assert names_match("Market Synergy Grp., Inc. v. DOL", "Mkt. Synergy Grp., Inc. v. U.S. Dep't of Labor")
+    assert names_match("Marshall v. Thurston Cnty.", "Marshall v. Thurston County")

@@ -26,8 +26,13 @@ def invented_series(reporter: str) -> str | None:
     if not match:
         return None
     base = match.group("base").strip()
+    if reporter.strip() in _known():
+        return None
     newest = _newest_series().get(_squash(base))
-    if newest is None or reporter.strip() in _known():
+    if newest is None and _squash(base) in _squashed_known():
+        # A recognised reporter with no numbered series at all ("Mass. App.").
+        return f"there is no {reporter.strip()}: {base} has only one series"
+    if newest is None:
         return None
     number, name = newest
     if int(match.group("number")) <= number:
@@ -44,6 +49,11 @@ def _known() -> frozenset[str]:
             names.update(entry.get("editions", {}))
             names.update(entry.get("variations", {}))
     return frozenset(names)
+
+
+@cache
+def _squashed_known() -> frozenset[str]:
+    return frozenset(_squash(name) for name in _known())
 
 
 @cache
@@ -67,4 +77,5 @@ def _newest_series() -> dict[str, tuple[int, str]]:
 
 
 def _squash(text: str) -> str:
-    return re.sub(r"\s+", "", text)
+    """A reporter name with spaces and periods dropped, so "F. Supp" finds "F. Supp."."""
+    return re.sub(r"[\s.]+", "", text).lower()

@@ -66,6 +66,12 @@ _EXHIBIT_LABEL = re.compile(r"\b(?:Ex|Exh|Exhibit)s?\.?\s+[A-Z]$")
 _MIN_PROPOSITION_WORDS = 5
 # A case's Id. pins pages with "at"; "Id. § 5" or "Id. 7521(a)" pins a statute's section.
 _STATUTE_ID = re.compile(r"\s*id\.?\*?,?\s+(?:§|\d+(?:\.\d+|\())", re.IGNORECASE)
+# Words that introduce a case name in a sentence ("Unlike KOLA, Inc. v. United States").
+_PROSE_BEFORE_NAME = re.compile(r"(?:Unlike|Like|Under|Following|Applying|Contrast|Similarly,?|Likewise,?)\s+(?=[A-Z])")
+# A record cite folded into the front of a name ("Respondent Brief 24-28, Sierra Club").
+_RECORD_BEFORE_NAME = re.compile(
+    r"[^,]*\b(?:Brief|Br\.|Mem\.|Decl\.|Tr\.|Opp\.|Reply|Pet\.|Compl\.|R\.)\s+(?:at\s+)?\d[\d\-–]*,\s+"
+)
 _COURT_YEAR_ONLY = re.compile(r"^\([^()]*\b\d{4}\)\s*$")
 # A citation signal inside a name walked back over a sentence end ("Evolutionary. See Content ...").
 _SIGNAL_LEAD = re.compile(r"\b(?:See|see|Cf\.|cf\.|Accord|accord|Compare|compare)(?:,?\s+(?:also|e\.g\.,?|generally))?,?\s+")
@@ -413,6 +419,12 @@ def _name_start(text: str, citation: CitationBase) -> int:
     junk = _NAME_JUNK.match(text[start:cite_start])
     if junk:
         start += junk.end()
+    record = _RECORD_BEFORE_NAME.match(text[start:cite_start])
+    if record:
+        start += record.end()
+    prose = _PROSE_BEFORE_NAME.match(text[start:cite_start])
+    if prose:
+        start += prose.end()
     lead_in = re.match(r"(?:(?:[Ii]n|of|the|case)\s+)+(?!re\b)", text[start:cite_start])
     return start + lead_in.end() if lead_in else start
 
