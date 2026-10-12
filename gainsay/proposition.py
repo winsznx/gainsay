@@ -56,17 +56,22 @@ Verdicts:
 
 A case decided under an earlier or parallel provision with the same wording, such as the Warsaw Convention article that a Montreal Convention article carries forward, supports a statement about the current provision when it makes the same point; say in the reason which provision the case applied.
 
-Set unsupported_part to what fails when the verdict is does_not_support (statement, parenthetical or both), and to none otherwise. List the passage ids you relied on and give a reason of one or two sentences."""
+Set unsupported_part to what fails when the verdict is does_not_support (statement, parenthetical or both), and to none otherwise.
+
+When the filing gives a pincite, the pinned pages are shown and each passage carries its page. Set point_on_pinned_pages to yes if a passage from the pinned pages makes the point, no if passages from the pinned pages are shown and none makes it, not_shown if no passage from those pages is shown, and no_pincite if there is no pincite.
+
+List the passage ids you relied on and give a reason of one or two sentences."""
 
 VERDICT_SCHEMA = {
     "type": "object",
     "properties": {
         "verdict": {"type": "string", "enum": ["supports", "does_not_support", "insufficient"]},
         "unsupported_part": {"type": "string", "enum": ["statement", "parenthetical", "both", "none"]},
+        "point_on_pinned_pages": {"type": "string", "enum": ["yes", "no", "not_shown", "no_pincite"]},
         "passage_ids": {"type": "array", "items": {"type": "string"}},
         "reason": {"type": "string"},
     },
-    "required": ["verdict", "unsupported_part", "passage_ids", "reason"],
+    "required": ["verdict", "unsupported_part", "point_on_pinned_pages", "passage_ids", "reason"],
     "additionalProperties": False,
 }
 
@@ -130,6 +135,7 @@ def render_request(
     whole: bool,
     signal: str | None = None,
     parenthetical: str | None = None,
+    pin: tuple[int, int] | None = None,
 ) -> str:
     coverage = "These passages are the whole opinion." if whole else (
         "These passages are excerpts selected from a longer opinion."
@@ -142,6 +148,9 @@ def render_request(
     claim = f"<filing_statement>\n{proposition}\n</filing_statement>\n\n<signal>{signal or 'none'}</signal>\n\n"
     if parenthetical:
         claim += f"<filing_parenthetical>\n{parenthetical}\n</filing_parenthetical>\n\n"
+    if pin:
+        pages = str(pin[0]) if pin[0] == pin[1] else f"{pin[0]}-{pin[1]}"
+        claim += f"<pincite>page {pages}</pincite>\n\n"
     question = "statement and parenthetical" if parenthetical else "statement"
     return (
         f"{claim}<opinion_passages>\n{coverage}\n\n{body}\n</opinion_passages>\n\n"
@@ -162,7 +171,7 @@ def check_proposition(
         return Finding("proposition", UNVERIFIABLE, "no opinion text to compare the proposition against")
     claim = f"{proposition} {parenthetical}" if parenthetical else proposition
     passages, whole = build_passages(claim, opinions, first_page, pin)
-    response = judge(SYSTEM_PROMPT, render_request(proposition, passages, whole, signal, parenthetical))
+    response = judge(SYSTEM_PROMPT, render_request(proposition, passages, whole, signal, parenthetical, pin))
     evidence = {
         "model": response.get("model"),
         "request_id": response.get("id"),

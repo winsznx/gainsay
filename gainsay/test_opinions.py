@@ -60,3 +60,14 @@ def test_cluster_fetch_follows_pagination_and_drops_empty_opinions():
     opinions = fetch_cluster_opinions(api, 9)
     assert [o.opinion_id for o in opinions] == [2]
     assert api.params[1] == {"cluster__id": "9", "cursor": "abc"}
+
+
+def test_page_breaks_from_another_reporter_are_dropped():
+    from gainsay.opinions import OpinionText, paginated_for
+    wisconsin = OpinionText(1, "majority", "cap_html", "text", [(0, 498), (10, 499)], "205 Wis. 2d 492")
+    (as_northwestern,) = paginated_for([wisconsin], "555 N.W.2d 156")
+    assert as_northwestern.pages == []
+    (as_wisconsin,) = paginated_for([wisconsin], "205 Wis. 2d 492")
+    assert as_wisconsin.pages == wisconsin.pages
+    courtlistener = OpinionText(2, "lead", "html", "text", [(0, 157)])
+    assert paginated_for([courtlistener], "555 N.W.2d 156")[0].pages == [(0, 157)]

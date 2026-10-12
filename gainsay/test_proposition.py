@@ -118,3 +118,9 @@ def test_the_signal_and_parenthetical_are_sent_as_data():
     assert "<filing_parenthetical>\nholding that a stay tolls a limit\n</filing_parenthetical>" in request
     assert request.endswith("Does the opinion support the filing's statement and parenthetical?")
     assert "<signal>none</signal>" in render_request("The stay tolls.", [], True)
+
+
+def test_the_pincite_is_shown_to_the_judge():
+    assert "<pincite>page 598</pincite>" in render_request("s", [], True, pin=(598, 598))
+    assert "<pincite>page 371-72</pincite>" not in render_request("s", [], True, pin=(371, 372))
+    assert "<pincite>page 371-372</pincite>" in render_request("s", [], True, pin=(371, 372))

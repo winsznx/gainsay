@@ -2,8 +2,9 @@
 
 The opinion's pages come from its star pagination. A pincite fails when it
 falls before the first page or after the last page break of the cited
-reporter, or when the passages the citation quotes were found only on other
-pages. Star-paged database cites (WL, LEXIS) and paragraph pins have no
+reporter, when the passages the citation quotes were found only on other
+pages, or when the judge found the statement made only off the pinned pages.
+Star-paged database cites (WL, LEXIS) and paragraph pins have no
 page breaks to check against, so they are unverifiable.
 """
 
@@ -63,6 +64,7 @@ def check_pincite(
     reporter_cite: str | None,
     opinions: list[OpinionText],
     quote_pages: list[int] | None = None,
+    point_pages: list[int] | None = None,
 ) -> Finding:
     if not pincite:
         return Finding("pincite", NOT_APPLICABLE, "no pincite given")
@@ -102,5 +104,13 @@ def check_pincite(
             FAIL,
             f"the quoted words are on page {found} of {reporter_cite}, not page {pincite}",
             {**evidence, "quote_pages": sorted(set(quote_pages))},
+        )
+    if point_pages and not quote_pages and not any(start <= page <= end for page in point_pages):
+        found = ", ".join(str(p) for p in sorted(set(point_pages)))
+        return Finding(
+            "pincite",
+            FAIL,
+            f"the opinion makes the point on page {found} of {reporter_cite}, not page {pincite}",
+            {**evidence, "point_pages": sorted(set(point_pages))},
         )
     return Finding("pincite", PASS, f"pincite {pincite} is within pages {first}-{last} of {reporter_cite}", evidence)

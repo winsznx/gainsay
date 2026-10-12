@@ -19,7 +19,7 @@ from gainsay.courtlistener import BudgetExhausted, CourtListenerError
 from gainsay.existence import Authority, Lookup, check_authority, check_untied_short
 from gainsay.findings import FAIL, NOT_APPLICABLE, PASS, UNVERIFIABLE, Finding
 from gainsay.names import names_match
-from gainsay.opinions import OpinionText, fetch_cluster_opinions
+from gainsay.opinions import OpinionText, fetch_cluster_opinions, paginated_for
 from gainsay.pincite import check_pincite, first_page, parse_pin, pin_reporter
 from gainsay.proposition import Judge, check_proposition
 from gainsay.quotes import check_quotes
@@ -93,6 +93,9 @@ class Checker:
         existence, identity = self._case_findings(authority)
         reporter = self._pin_reporters.get(citation["id"]) or authority.reporter_cites[0]
         source = _source_for(existence, identity)
+        if source is not None and source.cites:
+            # CAP's copy paginated in the reporter the filing cites keeps its pincites checkable.
+            source = replace(source, cites=tuple(sorted(source.cites, key=lambda c: c not in authority.reporter_cites)))
         if citation["kind"] == "history":
             reason = "subsequent history: the filing's statement rests on the decision cited before it"
             return [
@@ -103,12 +106,13 @@ class Checker:
                 self._pincite(citation["pincite"], source, reporter, identity),
             ]
         quotation = self._quotation(quotes, source, reporter, existence)
+        proposition = self._proposition(citation, source, reporter, existence, identity)
         return [
             existence,
             identity,
             quotation,
-            self._proposition(citation, source, reporter, existence, identity),
-            self._pincite(pincite, source, reporter, identity, quotation),
+            proposition,
+            self._pincite(pincite, source, reporter, identity, quotation, proposition),
         ]
 
     def _case_findings(self, authority: Authority) -> tuple[Finding, Finding]:
@@ -127,7 +131,7 @@ class Checker:
         if isinstance(text, str):
             return Finding("quotation", UNVERIFIABLE, text, _source_evidence(source))
         opinions, provenance = text
-        finding = check_quotes(quotes, opinions, first_page(reporter))
+        finding = check_quotes(quotes, paginated_for(opinions, reporter), first_page(reporter))
         return replace(finding, evidence={**finding.evidence, **provenance})
 
     def _proposition(
@@ -147,7 +151,7 @@ class Checker:
         pin = parse_pin(citation["pincite"]) if citation["pincite"] and identity.outcome == PASS else None
         try:
             finding = check_proposition(
-                citation["proposition"], opinions, first_page(reporter), pin, self._judge,
+                citation["proposition"], paginated_for(opinions, reporter), first_page(reporter), pin, self._judge,
                 _column(citation, "signal"), _column(citation, "parenthetical"),
             )
         except anthropic.RateLimitError:
@@ -163,6 +167,7 @@ class Checker:
         reporter: str,
         identity: Finding,
         quotation: Finding | None = None,
+        proposition: Finding | None = None,
     ) -> Finding:
         if not pincite:
             return check_pincite(pincite, None, [])
@@ -172,7 +177,9 @@ class Checker:
         if isinstance(text, str):
             return Finding("pincite", UNVERIFIABLE, text, _source_evidence(source))
         opinions, provenance = text
-        finding = check_pincite(pincite, reporter, opinions, _quote_pages(quotation))
+        finding = check_pincite(
+            pincite, reporter, paginated_for(opinions, reporter), _quote_pages(quotation), _point_pages(proposition)
+        )
         return replace(finding, evidence={**finding.evidence, **provenance})
 
     def _text_for(self, source: TextSource) -> tuple[list[OpinionText], dict] | str:
@@ -241,6 +248,17 @@ def _column(citation, name: str) -> str | None:
         return citation[name]
     except (KeyError, IndexError):
         return None
+
+
+def _point_pages(proposition: Finding | None) -> list[int]:
+    """Pages of the passages a supporting verdict relied on, when it found the point off the pinned pages."""
+    if proposition is None or proposition.outcome != PASS:
+        return []
+    verdict = proposition.evidence.get("verdict") or {}
+    if verdict.get("point_on_pinned_pages") != "no":
+        return []
+    relied = set(verdict.get("passage_ids") or [])
+    return [p["page"] for p in proposition.evidence.get("passages", []) if p["id"] in relied and p.get("page") is not None]
 
 
 def _quote_pages(quotation: Finding | None) -> list[int]:

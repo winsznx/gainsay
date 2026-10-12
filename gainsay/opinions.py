@@ -9,7 +9,7 @@ is stored as (offset into the text, page number).
 """
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from html.parser import HTMLParser
 from urllib.parse import parse_qsl, urlparse
 
@@ -37,6 +37,13 @@ class OpinionText:
     source_field: str
     text: str
     pages: list[tuple[int, int]]
+    # The reporter cite whose pages the breaks count, when the source says (CAP's
+    # copy of a case is paginated in one reporter only).
+    page_reporter: str | None = None
+
+    def counts_pages_of(self, reporter_cite: str) -> bool:
+        """Whether these page breaks can be read as pages of reporter_cite."""
+        return self.page_reporter is None or _volume_and_reporter(self.page_reporter) == _volume_and_reporter(reporter_cite)
 
     def page_at(self, offset: int, first_page: int | None = None) -> int | None:
         """The page holding offset, counted in the reporter that starts at first_page.
@@ -55,6 +62,15 @@ class OpinionText:
 
     def pages_in(self, first_page: int) -> list[tuple[int, int]]:
         return [(o, p) for o, p in self.pages if first_page < p <= first_page + MAX_OPINION_PAGES]
+
+
+def paginated_for(opinions: list[OpinionText], reporter_cite: str) -> list[OpinionText]:
+    """The opinions, without page breaks that belong to another reporter than the one cited."""
+    return [op if op.counts_pages_of(reporter_cite) else replace(op, pages=[]) for op in opinions]
+
+
+def _volume_and_reporter(cite: str) -> str:
+    return cite.rsplit(" ", 1)[0]
 
 
 def distinct_opinions(opinions: list[OpinionText]) -> list[OpinionText]:

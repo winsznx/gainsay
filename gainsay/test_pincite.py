@@ -58,3 +58,13 @@ def test_a_pin_inside_the_opinion_fails_when_the_quote_is_on_another_page():
     assert finding.reason == "the quoted words are on page 593 of 391 U.S. 593, not page 595"
     assert check_pincite("595", "391 U.S. 593", KAISER, quote_pages=[594]).outcome == PASS
     assert check_pincite("595", "391 U.S. 593", KAISER, quote_pages=[595]).outcome == PASS
+
+
+def test_a_pin_fails_when_the_point_is_made_only_on_other_pages():
+    finding = check_pincite("595", "391 U.S. 593", KAISER, point_pages=[594])
+    assert finding.reason == "the opinion makes the point on page 594 of 391 U.S. 593, not page 595"
+    assert check_pincite("595", "391 U.S. 593", KAISER, quote_pages=[595], point_pages=[594]).outcome == PASS
+
+
+def test_a_relied_on_page_inside_the_pin_keeps_it_passing():
+    assert check_pincite("594-95", "391 U.S. 593", KAISER, point_pages=[593, 595]).outcome == PASS

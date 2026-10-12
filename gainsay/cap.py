@@ -144,7 +144,10 @@ class Cap:
         html = self._cached_text(path, case.url)
         if html is None:
             raise CapError(f"{case.url} is missing")
-        opinions = [parse_opinion_html(case.id, kind, body, "cap_html") for kind, body in _ARTICLE.findall(html)]
+        opinions = [
+            replace(parse_opinion_html(case.id, kind, body, "cap_html"), page_reporter=case.cite)
+            for kind, body in _ARTICLE.findall(html)
+        ]
         if case.page_offset:
             opinions = [replace(op, pages=[(at, page + case.page_offset) for at, page in op.pages]) for op in opinions]
         return opinions
