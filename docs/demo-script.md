@@ -1,58 +1,63 @@
 # Demo script (3 minutes)
 
-The video has to explain the agent and cover neatlogs, Entire and cfo.ai: the architecture, implementation, runtime, reasoning and result for each. Every number below comes from a stored run or score file. Re-check them against the latest run before recording.
+The neatHack video has to show the problem, the agent, how cfo.ai and Entire were part of the build, and how neatlogs identified and resolved incidents. Every number below comes from a stored run, trace or score file, named next to it.
+
+Before recording, open these tabs:
+
+1. The *Mata v. Avianca* sanctions opinion (ECF 54) on CourtListener.
+2. The live site, [gainsay.vercel.app](https://gainsay.vercel.app), on run 47 (Mata ECF 21) and run 50 (Gauthier ECF 41).
+3. The neatlogs dashboard, with the traces in the neatlogs section below ready to paste into its search.
+4. A terminal in the repo, for `git log` and the watcher.
+5. `docs/cfo-ai/gainsay-revised-plan.xlsx` on its operating forecast sheet.
 
 ## 0:00 to 0:20, the problem
 
-Show ECF 54, the *Mata v. Avianca* sanctions opinion.
+Show ECF 54.
 
-> In 2023, lawyers in Mata v. Avianca filed a brief citing cases that don't exist. The other side spent weeks proving it. Gainsay is an agent that reads the other side's filings off the public docket and checks every case they cite, before you have to answer them.
+> In 2023, lawyers in Mata v. Avianca filed a brief citing cases that don't exist. The other side spent weeks proving it, and courts have found the same thing in many filings since. Gainsay reads the other side's filings off the public docket and checks every case they cite, before you have to answer them.
 
-## 0:20 to 1:20, the agent on ECF 21
+## 0:20 to 1:15, the agent on two sanctioned filings
 
-Run the UI (`.venv/bin/uvicorn gainsay.web.app:app`) and open the latest ECF 21 run.
+Open run 47, Mata ECF 21.
 
-1. The opening sentence ("12 of 16 citations have a problem") and the strip: one bar per citation in filing order. Short bars are citations inside passages the filing quotes from another case.
-2. Open *Varghese*: "Not found in searched sources". Show the reasons: CourtListener's name search found nothing, and the Caselaw Access Project's volume list shows the cited page, 925 F.3d 1339, is in the middle of *J.D. v. Azar*.
-3. Open *Kaiser Steel*: the case exists, but Claude read the whole opinion and found it is about abstaining for a New Mexico state-law question, not the bankruptcy stay. The pincite flag shows page 598 is past the opinion's last page, 595.
-4. Open *Tseng*: "Quote not in opinion". The quoted words score 57 out of 100 against the closest text in the opinion.
-5. Open *Ehrlich*: "Wrong case". Nothing exists at 360 N.J. Super. 360. The real case is 360 F.3d 366 (2d Cir. 2004).
+1. The opening sentence, "12 of 16 citations have a problem", and the strip: one bar per citation in filing order.
+2. *Varghese*: Not found in searched sources. CourtListener's name search found nothing, and the Caselaw Access Project's volume list shows 925 F.3d 1339 is a page in the middle of *J.D. v. Azar*.
+3. *Kaiser Steel*: the case is real, but Claude, reading passages the code pulled from it, found it's about abstention on a New Mexico question, not the bankruptcy stay. The pincite flag says 391 U.S. 593 ends at page 595, and the filing cites page 598.
+4. *El Al v. Tseng*: Quote not in opinion. The closest text in the decision scores 57 out of 100.
 
-> Scored against the court's own findings in ECF 54, which Gainsay never sees while checking: it calls 5 of the 7 cases the court found don't exist "Not found", and no real case. The other two are cited only to Westlaw, which free sources can't see, so it says "Unverifiable: outside free sources" rather than accuse. Its status matches the court on 10 of 13 cases. (`scoring/results/run-47-score.json`)
+> Scored against the court's own findings, which Gainsay is blocked from reading: it matches the court on 10 of 13 cases, calls 5 of the 7 missing cases Not found, and calls no real case Not found. The other two are cited only to Westlaw, so it says Unverifiable instead of guessing. (`scoring/results/run-47-score.json`)
 
-## 1:20 to 1:50, running on its own
+Open run 50, Gauthier ECF 41.
 
-Show `scripts/watch_docket.py` output and the docket config.
+> A second sanctioned filing, from Texas in 2024. The court found two cases that don't exist and six misquotes. Gainsay catches all six misquotes and marks none of the eight Verified. It also flags *Higginbotham*: the brief says the case is about falsified testing records, and page 412 of the opinion says it's about hiding overstated profits from an auditor. (`scoring/results/run-50-score.json`)
 
-> Point it at a docket and it polls for new entries, picks out the other side's filings by who filed them, and checks each one. It found 17 opposing filings on the Mata docket. CourtListener allows a limited number of calls, so when it hits the limit it pauses, and the next run resumes from the ledger without repeating work. Everything it has fetched is cached, so a rerun of ECF 21 costs zero calls.
+## 1:15 to 1:35, running on its own
 
-Show the live panel by running `scripts/check_citations.py --entry 21 --simulate-outage-after 5` with the run page open: the sentence, the next three citations and the quota countdown, then rerun to resume.
+Show `dockets/mata-v-avianca.json` and the watcher's output.
 
-Also mention that it learned from the other side's real memorandum (ECF 45): the first pass flagged 36 of 54 citations, mostly tables of contents, record citations and unpublished cases, and the fixes brought it to 15 of 51, 8 of which are the memo naming cases the court found don't exist.
+> Point it at a docket and it polls for new entries, picks the other side's filings by who filed them, and checks only the ones it hasn't finished. On the Mata docket it found 17 filings by the plaintiff's side. Everything it fetches is kept, so a rerun costs zero CourtListener calls and zero Claude calls (run 43).
 
-Then the control, Avianca's own memorandum (ECF 18, run 46): 29 of 50 Verified, no CourtListener calls because the quota was spent and CAP supplied the opinions. One of its flags is a real miscite in Avianca's own brief: *Vumbaca* cited at 859 F. Supp. 343, which is a different case; it's at 859 F. Supp. 2d 343.
+## 1:35 to 2:15, neatlogs: incidents found and fixed
 
-## 1:50 to 2:20, neatlogs
+Each run attempt is one `gainsay.check_run` trace, with a `gainsay.check_citation` span per citation carrying the five outcomes, and the Claude calls inside.
 
-Show the neatlogs dashboard.
+1. **A real outage.** Paste run 42's trace, `8e1c90fdb9909ea2f1d6cdcd6737754d`. The healthy control (Avianca's own brief, ECF 18) stopped after 7 of 50 citations: the run span ends paused with "CourtListener day budget exhausted". The spans show what had settled and nothing was lost.
+2. **The fix.** Paste run 46's trace, `1c61776418e5d0b1a5bb160207b778ea`. Rerun with `--courtlistener offline`, answering from the ledger and the Caselaw Access Project: all 50 citations, no CourtListener calls. One of its 7 flags is a real miscite in Avianca's brief, *Vumbaca* at 859 F. Supp. 343 instead of 859 F. Supp. 2d 343.
+3. **Recovery, forced.** Run 36 paused on a simulated outage after 5 citations (`03f424545ef1a0c86acb77b2ada29f0b`), and the next attempt (`c6cb21331eeb15d38cce665043584055`) resumed without repeating a call. Run 37 was killed mid-run and resumed the same way. Both are labelled "simulated" in the ledger, the run page and the trace.
+4. **Quality regressions.** The same control before and after its fixes: run 45 flagged 10 of 50 (`87606e6faca34cda955a327f68069c34`), run 46 flagged 7.
 
-- **Architecture:** one trace per run attempt. A `gainsay.check_run` workflow span, with one `gainsay.check_citation` span per citation carrying each check's outcome, and the Claude calls inside.
-- **Runtime:** open the trace for the latest ECF 21 run, run 47 (`9dd695203cf90724f40ffc8ede51fa4c`, also on its run page).
-- **Recovery:** a paused attempt records the 429 on the run span, and the next attempt's trace finishes the run.
-- **Result, before and after:** run 6 (commit `2dd81a3`) against run 7 (commit `c8ceff1`). The single-quote and wrong-case fixes took existence precision from 0.88 to 1.00 and agreement with the court from 11 to 12 of 13 (`scoring/results/run-6-score.json`, `run-7-score.json`).
+## 2:15 to 2:35, Entire
 
-## 2:20 to 2:40, Entire
+Run `git log -3` in the terminal.
 
-Show `entire status` and `git log` with the `Entire-Checkpoint` trailers.
+> Every commit carries an Entire checkpoint trailer linking the coding session behind it: what was tried, what failed, and the numbers that drove the change, which also sit in each commit body. That's how the work carried across sessions, including when one coding agent ran out of context and another picked it up. `docs/entire/` has Entire's symbol-level analysis of the main fixes.
 
-> Every commit carries an Entire checkpoint with the agent session behind it: the reasoning, the dead ends, and the measured numbers in the commit body. That is how the context carried across sessions, including when one coding agent ran out of tokens and another picked up the work.
+## 2:35 to 2:55, cfo.ai
 
-Optional, if time allows: LePhantomCite. On the development subset Gainsay beats Claude with no tools on citation errors (F1 0.916 against 0.787); on the held-out subset Claude is ahead (0.837 against 0.616), partly because those runs were offline with no CourtListener name search. The difference that matters to a lawyer: each Gainsay flag comes with the opinion text or record it rests on.
+Show the operating forecast sheet.
 
-## 2:40 to 3:00, cfo.ai
+> cfo.ai modeled the business on measured costs: about 2.6 cents of Claude per citation and nothing for CourtListener. At $29 a watched docket a month, 39 dockets cover the fixed budget. The first plan had no monthly forecast. Once cfo.ai added one, cash dipped $53 below zero in July 2027, so it now recommends $8,500 of opening cash. (`docs/cfo-ai-plan.md`)
 
-Show the revised cfo.ai plan (`docs/cfo-ai/gainsay-revised-plan.xlsx`), on its operating forecast sheet.
+## 2:55 to 3:00, close
 
-> The plan is built on measured costs: about 2.6 cents of Claude per citation checked, and nothing for CourtListener. At $29 a docket a month, 39 dockets cover the fixed budget. The first version had no monthly forecast. Once it was added, cash dipped $53 below zero in July 2027, so cfo.ai now recommends $8,500 of opening cash. At the conservative API rate, the default CourtListener budget runs out in January 2027, before the cash does. (`docs/cfo-ai-plan.md`)
-
-Close on the repo URL.
+> Gainsay. Every flag comes with the decision text it rests on. The repo is github.com/winsznx/gainsay.

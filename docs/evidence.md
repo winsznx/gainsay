@@ -15,6 +15,8 @@ Files: `scoring/results/run-6-score.json`, `run-7-score.json`. Those runs were t
 
 On a real memorandum with no answer key, ECF 45, the first pass flagged 36 of 54 citations and the fixes brought it to 15 of 51 (runs 22 and 31; commits `0b2fba9`, `4b4c71c`, `9c6bb19`, `eee7aba`). On LePhantomCite, the harness first scored only citation errors with a lookup: development F1 0.612, held-out 0.503. With the Caselaw Access Project and Gainsay's full checks, development reached 0.916 on citation errors and 0.729 on all five types, and the same held-out subset, scored once afterwards, rose to 0.616 on citation errors. Claude with no tools is still ahead on held-out (0.837), and the README gives the reasons (`scoring/results/lephantomcite-*.json`).
 
+A second sanctioned filing, Gauthier v. Goodyear ECF 41, exposed three extraction bugs: a Texas court parenthetical that ran a citation into the next one, quotes inside a citation's own parenthetical, and writ history read as a holding (commits `a34ff8b`, `ba16ae8`, each measured on every stored filing and the 390 benchmark excerpts). After them, run 50 matches the court's order (ECF 48) on 6 of 8 cases, all six misquotes, and marks none of the eight Verified (`scoring/results/run-50-score.json`).
+
 The healthy control drove fixes too: run 45 flagged 10 of Avianca’s 50 citations, and after the footnote, abbreviation and Warsaw/Montreal fixes run 46 flagged 7, one of them a real miscite in Avianca's brief (commit `97938cb`).
 
 ## You used neatlogs
@@ -23,6 +25,7 @@ One trace per run attempt, a `gainsay.check_run` workflow span with one `gainsay
 
 | Run | What it is | Trace |
 |---|---|---|
+| 50 | Gauthier v. Goodyear ECF 41, scored against the court's order, no CourtListener calls | `32bdb1190b3b2970b4ec3ea07827e038` |
 | 47 | Final ECF 21 run, with the Caselaw Access Project as a second source and no CourtListener calls | `9dd695203cf90724f40ffc8ede51fa4c` |
 | 46 | Healthy control ECF 18, all 50 citations, after the control's fixes | `1c61776418e5d0b1a5bb160207b778ea` |
 | 45 | Healthy control ECF 18 before those fixes | `87606e6faca34cda955a327f68069c34` |
