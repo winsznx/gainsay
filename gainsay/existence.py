@@ -81,7 +81,7 @@ class Lookup:
         self.response_ids: list[int | None] = []
         for start in range(0, len(cites), MAX_CITES_PER_LOOKUP):
             data = {"text": "; ".join(cites[start : start + MAX_CITES_PER_LOOKUP])}
-            if start and api.response_id("POST", LOOKUP_PATH, data) is None:
+            if start and not api.offline and api.response_id("POST", LOOKUP_PATH, data) is None:
                 logger.warning("citation lookup takes 60 citations a minute, waiting %ss", LOOKUP_INTERVAL_SECONDS)
                 pause(LOOKUP_INTERVAL_SECONDS)
             try:

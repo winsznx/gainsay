@@ -53,6 +53,7 @@ def test_an_offline_run_answers_from_the_ledger_and_reports_misses(tmp_path):
         "INSERT INTO api_responses (method, path, params, body, fetched_at) VALUES ('GET', 'search/', '{}', '[1]', 'now')"
     )
     api = CachedCourtListener(conn, client_factory=OfflineClient)
+    assert api.offline and not CachedCourtListener(conn).offline
     assert api.get_json("search/") == [1]
     with pytest.raises(CourtListenerError, match="not in the ledger and this run is offline"):
         api.get_json("opinions/", {"cluster__id": 1})

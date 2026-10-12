@@ -29,6 +29,11 @@ class CachedCourtListener:
     def calls(self) -> int:
         return self._client.calls if self._client else 0
 
+    @property
+    def offline(self) -> bool:
+        """Whether a request the ledger lacks fails here instead of reaching CourtListener."""
+        return self._client_factory is OfflineClient
+
     def get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
         params = params or {}
         return self._cached("GET", path, params, lambda client: client.get_json(path, params))

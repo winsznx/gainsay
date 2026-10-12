@@ -3,6 +3,8 @@ from gainsay.findings import FAIL, PASS, UNVERIFIABLE
 
 
 class FakeApi:
+    offline = False
+
     def __init__(self, lookup_results, search_results=()):
         self.lookup_results = lookup_results
         self.search_results = list(search_results)
@@ -239,6 +241,10 @@ def test_lookups_go_out_sixty_citations_at_a_time_a_minute_apart():
     Lookup(api, authorities, pause=pauses.append)
     assert api.posts == [60, 60, 10]
     assert pauses == [LOOKUP_INTERVAL_SECONDS, LOOKUP_INTERVAL_SECONDS]
+
+    api.offline, pauses = True, []
+    Lookup(api, authorities, pause=pauses.append)
+    assert pauses == []
 
 
 def test_page_shared_by_several_decisions_is_not_the_wrong_case():
