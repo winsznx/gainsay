@@ -25,6 +25,8 @@ _MARGIN_NUMBER = re.compile(r"^\d{1,3}[.,]?$")
 _OCR_FIXES = (
     (re.compile(r"\([Il]st\)"), "(1st)"),
     (re.compile(r"_"), ""),
+    # Asterisks marking italics ("*Reed v. Union*"). A star page ("at *3") keeps its asterisk.
+    (re.compile(r"(?<![\w*])\*(?=[A-Za-z])|(?<=[A-Za-z.’'])\*(?![\w*])"), ""),
 )
 
 _DOUBLE_QUOTES = "\"“”"
@@ -364,7 +366,7 @@ def _case_name(text: str, citation: FullCaseCitation) -> str:
     start = _name_start(text, citation)
     name = text[start : citation.span()[0]].strip().rstrip(",").strip()
     name = re.sub(r"\.{2,}", ".", name)
-    name = re.sub(r",\s*Nos?\.\s.*$", "", name)
+    name = re.sub(r",\s*(?:(?:Ca|Case|Civ|Civil|Adv|Pro|Cr|Crim)\.?\s+)*Nos?\.\s.*$", "", name)
     if name:
         return name
     plaintiff, defendant = citation.metadata.plaintiff, citation.metadata.defendant

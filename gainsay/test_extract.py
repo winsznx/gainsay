@@ -182,3 +182,13 @@ def test_citations_to_reporter_series_that_dont_exist_are_found():
     assert smith.proposition == "Courts agree the stay tolls the period."
     assert doe.authority.case_name == "In re Estate of Doe v. Bank of America"
     assert kaiser.authority.invented_reporter is None
+
+
+def test_italic_asterisks_and_case_number_prefixes_leave_names():
+    text = (
+        "See *Wyoming v. USDA*, 661 F.3d 1209, 1230 (10th Cir. 2011); *In re Dimare*, Ca. No. 08-10598, "
+        "Adv. Pro. 08-1234, 462 B.R. 283 (Bankr. D. Mass. 2011); Rivas, 2014 WL 3694983, at *1."
+    )
+    names = [c.authority.case_name for c in extract(text).citations if c.authority]
+    assert names[:2] == ["Wyoming v. USDA", "In re Dimare"]
+    assert "at *1" in clean_text(text)

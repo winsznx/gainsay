@@ -121,7 +121,17 @@ def check_authority(
             f"and {existence.reason}",
             existence.evidence,
         )
-    if resolved:
+    shared_page = found is not None and set(authority.reporter_cites) & set(found.get("citation") or [])
+    if resolved and shared_page:
+        # Several short decisions can share a page; the lookup returned another one.
+        identity = Finding(
+            "identity",
+            PASS,
+            f"{', '.join(authority.reporter_cites)} holds more than one decision, and "
+            f"{_shorten(found['caseName'])} is reported there",
+            {**lookup_evidence, "found": _search_summary(found)},
+        )
+    elif resolved:
         others = [_cluster_summary(c) for _, c in resolved]
         identity = Finding(
             "identity",

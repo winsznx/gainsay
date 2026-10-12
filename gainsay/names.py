@@ -28,6 +28,10 @@ _CONTRACTIONS = {
     "intl": "international", "natl": "national", "assn": "association", "dept": "department",
     "govt": "government", "commn": "commission", "mgmt": "management", "grp": "group",
     "bhd": "brotherhood", "secy": "secretary", "atty": "attorney", "hosp": "hospital",
+    "commr": "commissioner", "tel": "telephone", "sys": "systems", "pub": "public", "util": "utility",
+    "fin": "financial", "ins": "insurance", "mfg": "manufacturing", "prods": "products", "servs": "services",
+    "sch": "school", "univ": "university", "ctr": "center", "dist": "district", "envtl": "environmental",
+    "hous": "housing", "dev": "development", "econ": "economic", "wis": "wisconsin", "med": "medical",
 }
 _PARTY_COVERAGE = 0.6
 _SINGLE_PARTY_COVERAGE = 2 / 3
@@ -47,7 +51,17 @@ def names_match(cited: str, found: str) -> bool:
     if not cited_parties or not found_tokens:
         return fuzz.token_sort_ratio(cited.lower(), found.lower()) >= 90
     coverage = _SINGLE_PARTY_COVERAGE if len(cited_parties) == 1 else _PARTY_COVERAGE
-    return all(_party_found(party, found_tokens, coverage) for party in cited_parties)
+    found_initials = {_initials(part) for part in _PARTY_SEPARATOR.split(found)}
+    return all(
+        _party_found(party, found_tokens, coverage) or (len(party) == 1 and party[0] in found_initials)
+        for party in cited_parties
+    )
+
+
+def _initials(party: str) -> str:
+    """"usda" for "United States Department of Agriculture", for acronyms like USDA or SEC."""
+    words = [w for w in re.findall(r"[A-Za-z]+", party) if w.lower() not in ("of", "the", "and", "for")]
+    return "".join(w[0] for w in words).lower()
 
 
 def _party_found(party: list[str], found_tokens: list[str], coverage: float) -> bool:

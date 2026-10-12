@@ -59,3 +59,21 @@ def test_bluebook_abbreviations_match_the_words_they_shorten(cited, found):
 
 def test_short_abbreviation_prefixes_do_not_match_everything():
     assert not names_match("Ash v. United States", "Ashcroft v. United States")
+
+
+@pytest.mark.parametrize(
+    ("cited", "found"),
+    [
+        ("Reed v. United Transp. Union", "Reed v. United Transportation Union"),
+        ("Tucker v. Comm’r", "Tucker v. Commissioner"),
+        ("United States v. American Tel. & Tel. Co.", "United States v. American Telephone & Telegraph Co."),
+        ("Wyoming v. USDA", "Wyoming v. United States Department of Agriculture"),
+        ("Johnson v. SEC", "Patricia A. Johnson v. Securities and Exchange Commission"),
+    ],
+)
+def test_contractions_and_acronyms_match(cited, found):
+    assert names_match(cited, found)
+
+
+def test_acronym_must_spell_the_other_party():
+    assert not names_match("Wyoming v. EPA", "Wyoming v. United States Department of Agriculture")

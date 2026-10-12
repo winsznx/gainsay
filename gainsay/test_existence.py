@@ -239,3 +239,15 @@ def test_lookups_go_out_sixty_citations_at_a_time_a_minute_apart():
     Lookup(api, authorities, pause=pauses.append)
     assert api.posts == [60, 60, 10]
     assert pauses == [LOOKUP_INTERVAL_SECONDS, LOOKUP_INTERVAL_SECONDS]
+
+
+def test_page_shared_by_several_decisions_is_not_the_wrong_case():
+    spinella = Authority(9, "Spinella v. Pearce", ["873 F.2d 701"], "1989", "ca9")
+    api = FakeApi(
+        [lookup_result("873 F.2d 701", 200, [cluster("Ricardo Jalil v. Avdel Corporation", "1989-04-01")])],
+        [{"caseName": "Spinella v. Pearce", "court_id": "ca9", "dateFiled": "1989-04-20",
+          "citation": ["873 F.2d 701"], "cluster_id": 3}],
+    )
+    existence, identity = check(api, spinella)
+    assert (existence.outcome, identity.outcome) == (PASS, PASS)
+    assert "holds more than one decision" in identity.reason
