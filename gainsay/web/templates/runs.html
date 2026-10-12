@@ -29,7 +29,7 @@
         <td><cite>{{ run.case_name }}</cite>, ECF {{ run.entry_number }}</td>
         <td class="result-cell">
           {% if run.status == "complete" %}<span>{{ report.headline }}</span>
-          {% else %}<span class="tag tag-neutral">{{ run.status | capitalize }}</span>{% if run.status_reason %} <span class="reason">{{ run.status_reason }}</span>{% endif %}{% endif %}
+          {% else %}<span class="tag tag-neutral">{{ run_status(run) | capitalize }}</span>{% if run.status_reason %} <span class="reason">{{ run.status_reason }}</span>{% endif %}{% endif %}
           {% if report.citations %}{{ strip(report, "/runs/" ~ run.id, "mini") }}{% endif %}
         </td>
         <td class="mono">{{ run.version }}</td>

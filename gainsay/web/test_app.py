@@ -84,6 +84,23 @@ def test_landing_and_docket_pages_render(tmp_path):
     assert client.get("/docket").status_code == 404
 
 
+def test_snapshot_shows_unfinished_runs_as_stopped(tmp_path):
+    from gainsay.ledger import connect, set_progress
+    _, run_id = make_run(tmp_path)
+    conn = connect(tmp_path / "ledger.sqlite")
+    set_progress(conn, run_id, "Paused on the day budget.", [], 3, "2000-01-01T00:00:00+00:00")
+    conn.execute("UPDATE runs SET status = 'paused' WHERE id = ?", (run_id,))
+    conn.commit()
+    snapshot = TestClient(create_app(tmp_path / "ledger.sqlite", read_only=True))
+
+    paused = snapshot.get(f"/runs/{run_id}").text
+    assert 'http-equiv="refresh"' not in paused and "quota refills in" not in paused
+    conn.execute("UPDATE runs SET status = 'running' WHERE id = ?", (run_id,))
+    conn.commit()
+    assert ", interrupted" in snapshot.get(f"/runs/{run_id}").text
+    assert "Interrupted" in snapshot.get("/runs").text
+
+
 def test_read_only_snapshot_is_served_without_writing(tmp_path):
     _, run_id = make_run(tmp_path)
     path = tmp_path / "ledger.sqlite"

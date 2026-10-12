@@ -48,7 +48,7 @@
     </div>
     <div class="queue-body">
       <a class="title" href="/runs/{{ report.run.id }}">{{ entry.summary }}</a>
-      <span class="result">{{ report.headline }} Run {{ report.run.id }}, {{ report.run.status }}.</span>
+      <span class="result">{{ report.headline }} Run {{ report.run.id }}, {{ run_status(report.run) }}.</span>
       {% if report.citations %}{{ strip(report, "/runs/" ~ report.run.id, "mini") }}{% endif %}
     </div>
     <div class="right">

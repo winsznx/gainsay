@@ -4,8 +4,9 @@
 {% set filing = report.filing %}
 {% set run = report.run %}
 {% set here = "/runs/" ~ run.id %}
+{% set live = report.active and not READ_ONLY %}
 {% block title %}Run {{ run.id }}: {{ filing.case_name }}, ECF {{ filing.entry_number }} | Gainsay{% endblock %}
-{% block head %}{% if report.active %}<meta http-equiv="refresh" content="2">{% endif %}{% endblock %}
+{% block head %}{% if live %}<meta http-equiv="refresh" content="2">{% endif %}{% endblock %}
 {% block crumbs %}
 <a href="/docket">Docket</a><span class="sep" aria-hidden="true">/</span>
 <a href="/runs">Runs</a><span class="sep" aria-hidden="true">/</span>
@@ -14,11 +15,11 @@
 {% block topbar_end %}<a class="btn btn-light btn-small" href="{{ here }}/report.md">{{ icon("download", 16) }}Download the report</a>{% endblock %}
 {% block content %}
 {% if report.progress %}
-<section class="notice{% if report.active %} live{% endif %}" aria-live="polite">
+<section class="notice{% if live %} live{% endif %}" aria-live="polite">
   <span class="dot" aria-hidden="true"></span>
   <div>
     <p class="now-line">{{ report.progress.narration }}</p>
-    {% if report.progress.wait_seconds is not none and run.status == "paused" %}
+    {% if live and report.progress.wait_seconds is not none and run.status == "paused" %}
     <p class="meta">CourtListener quota refills in {{ report.progress.wait_seconds // 60 }}m {{ report.progress.wait_seconds % 60 }}s. {{ report.progress.queued }} citations queued.</p>
     {% endif %}
     {% if report.progress.next_actions %}
@@ -33,7 +34,7 @@
     <p class="kicker"><cite>{{ filing.case_name }}</cite>, No. {{ filing.docket_number }} ({{ court_cite(filing.court) }}), ECF {{ filing.entry_number }}: {{ filing.description }}</p>
     <h1>{{ report.headline }}</h1>
     <p>
-      Run {{ run.id }} on commit <code>{{ run.version }}</code>, {{ run.status }}{% if run.status_reason %} ({{ run.status_reason }}){% endif %}.
+      Run {{ run.id }} on commit <code>{{ run.version }}</code>, {{ run_status(run) }}{% if run.status_reason %} ({{ run.status_reason }}){% endif %}.
       {% set incomplete = report.status_counts.get("Incomplete", 0) %}
       {% if incomplete %}{{ incomplete }} citation{{ "s are" if incomplete != 1 else " is" }} missing a check this run didn't include.{% endif %}
       {% if report.pincite_flags %}{{ report.pincite_flags }} pincite{{ "s point" if report.pincite_flags != 1 else " points" }} past the opinion's pages.{% endif %}

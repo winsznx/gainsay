@@ -103,6 +103,11 @@ FINDINGS = {
 }
 
 
+def shown_status(status: str, read_only: bool) -> str:
+    """A read-only snapshot has no process behind it, so a run still marked running was interrupted."""
+    return "interrupted" if read_only and status == "running" else status
+
+
 def first_of_each_status(report: RunReport) -> list[CitationReport]:
     """One citation per status, in status order, to show what each status looks like."""
     firsts: dict[str, CitationReport] = {}
@@ -142,6 +147,7 @@ def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False)
         FINDINGS=FINDINGS,
         DOCKET=load_docket_config(),
         READ_ONLY=read_only,
+        run_status=lambda run: shown_status(run["status"], read_only),
         scored_run_id=lambda: (latest_mata_score() or {}).get("run_id"),
     )
 
