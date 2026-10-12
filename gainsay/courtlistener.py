@@ -39,6 +39,11 @@ DAY = Limit("day", 86400, 125)
 # 429s with 1-2 second retry hints, so the wait gets this much extra.
 WINDOW_MARGIN_SECONDS = 3
 
+# A dropped connection or a 5xx is retried, with a warning each time, before
+# the run gives up on the call. A 429 is never retried: it pauses the run.
+MAX_RETRIES = 3
+BACKOFF_SECONDS = (2, 4, 8)
+
 
 class CourtListenerError(Exception):
     pass
@@ -124,6 +129,7 @@ class CourtListenerClient:
         budget: Budget | None = None,
         session: requests.Session | None = None,
         timeout: float = 30,
+        sleep: Callable[[float], None] = time.sleep,
     ):
         token = token or os.environ.get("COURTLISTENER_TOKEN")
         if not token:
@@ -132,6 +138,7 @@ class CourtListenerClient:
         self._budget = budget or Budget()
         self._session = session or requests.Session()
         self._timeout = timeout
+        self._sleep = sleep
         self.calls = 0
 
     def get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
@@ -159,14 +166,23 @@ class CourtListenerClient:
         headers: dict[str, str] | None = None,
         **kwargs: Any,
     ) -> requests.Response:
-        self._budget.acquire()
-        self.calls += 1
-        try:
-            response = self._session.request(
-                method, url, headers=headers, timeout=self._timeout, **kwargs
-            )
-        except requests.RequestException as exc:
-            raise CourtListenerError(f"{method} {url} failed: {exc}") from exc
+        for attempt in range(MAX_RETRIES + 1):
+            self._budget.acquire()
+            self.calls += 1
+            try:
+                response = self._session.request(
+                    method, url, headers=headers, timeout=self._timeout, **kwargs
+                )
+            except requests.RequestException as exc:
+                failure = f"{method} {url} failed: {exc}"
+            else:
+                if response.status_code < 500:
+                    break
+                failure = f"{method} {response.url} returned {response.status_code}"
+            if attempt == MAX_RETRIES:
+                raise CourtListenerError(f"{failure} (after {MAX_RETRIES} retries)")
+            logger.warning("%s; retry %d of %d in %ss", failure, attempt + 1, MAX_RETRIES, BACKOFF_SECONDS[attempt])
+            self._sleep(BACKOFF_SECONDS[attempt])
 
         if response.status_code == 429:
             raise BudgetExhausted("server", _retry_after(response))

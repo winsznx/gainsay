@@ -102,7 +102,10 @@ class FakeSession:
         self.requests.append(
             {"method": method, "url": url, "params": params, "data": data, "headers": headers}
         )
-        return self._responses.pop(0)
+        response = self._responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
 
 
 def make_client(tmp_path, *responses):
@@ -164,3 +167,19 @@ def test_storage_url_accepts_full_urls_and_bare_paths():
     full = "https://storage.courtlistener.com/recap/a.pdf"
     assert storage_url(full) == full
     assert storage_url("/recap/a.pdf") == full
+
+
+def test_dropped_connections_and_5xx_are_retried_then_given_up(tmp_path):
+    import requests
+
+    slept = []
+    session = FakeSession(requests.ConnectionError("reset"), FakeResponse(status_code=502), FakeResponse(payload={"ok": 1}))
+    client = CourtListenerClient(token="t", budget=make_budget(tmp_path, FakeClock()), session=session, sleep=slept.append)
+    assert client.get_json("search/") == {"ok": 1}
+    assert (client.calls, slept) == (3, [2, 4])
+
+    failing = FakeSession(*[requests.ConnectionError("reset")] * 4)
+    client = CourtListenerClient(token="t", budget=make_budget(tmp_path, FakeClock()), session=failing, sleep=slept.append)
+    with pytest.raises(CourtListenerError, match="after 3 retries"):
+        client.get_json("search/")
+    assert len(failing.requests) == 4
