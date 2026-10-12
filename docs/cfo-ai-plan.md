@@ -1,8 +1,11 @@
 # The cfo.ai business plan
 
-cfo.ai built a driver model for Gainsay from the measured costs in [`cfo-ai-inputs.md`](cfo-ai-inputs.md). It treats Gainsay as a legal-software business priced per watched docket. The export, Main Scenario, is [`cfo-ai/gainsay-drivers.xlsx`](cfo-ai/gainsay-drivers.xlsx), unedited.
+cfo.ai built Gainsay's plan in two passes from the measured costs in [`cfo-ai-inputs.md`](cfo-ai-inputs.md). It treats Gainsay as a legal-software business priced per watched docket. Both exports are in [`cfo-ai/`](cfo-ai/), unedited:
 
-## What the model says
+- `gainsay-drivers.xlsx` is the first pass: drivers and unit economics.
+- `gainsay-revised-plan.xlsx` is the revision. It adds a monthly forecast, a cash buffer, a CourtListener capacity check and results for the data-fee tests, and keeps every original input.
+
+## Unit economics
 
 | Driver | Value | Where it comes from |
 |---|---|---|
@@ -17,26 +20,43 @@ cfo.ai built a driver model for Gainsay from the measured costs in [`cfo-ai-inpu
 | Fixed cash budget | $1,010.60 a month | $500 founder draw, $250 data fee ($3,000 a year), $100 legal reserve, $100 marketing, $30 tools, $15 hosting, $15.60 of free checks |
 | Dockets to cover the fixed budget | 39 | $1,010.60 ÷ $26.04, rounded up |
 
-Every formula in the workbook gives the same values when recomputed from its inputs.
-
 Claude is a small cost line. At 35 citations a filing it takes about 6% of a docket's monthly price, and even a 50-citation brief costs $1.30.
 
-## What the model doesn't cover
+## Forecast
 
-The workbook has the drivers and the unit economics but no month-by-month projection. I ran its own inputs forward, with active dockets each month equal to last month's less 3% churn plus that month's new dockets, and brief sales growing 5% a month as the demand sheet sets them.
+From the revised workbook's operating forecast, with the data fee reserved monthly and the existing $5,000 opening cash:
 
-| Month | Active dockets | Monthly result | CourtListener calls a day |
+| Month | Active dockets | Monthly result | Cash | Calls a day at 2 per citation | Calls a day at 0.8 per citation |
+|---|---|---|---|---|---|
+| 2026-10 | 3.0 | −$857.19 | $3,642.81 | 79 | 34 |
+| 2027-01 | 12.4 | −$601.00 | $1,579.65 | 136 | 62 |
+| 2027-06 | 29.7 | −$126.89 | −$29.89 | 240 | 114 |
+| 2027-07 | 33.4 | −$23.31 | −$53.20 | 263 | 125 |
+| 2027-08 | 37.3 | +$83.66 | $30.46 | 286 | 137 |
+| 2027-12 | 54.2 | +$150.12 | $1,110.74 | 389 | 188 |
+
+**Cash.** Losses before the first positive month add up to $4,553.20, but opening cash less the $500 launch cost is $4,500. Cash goes negative in June 2027 and bottoms out at −$53.20 in July. To hold three months of the fixed budget ($3,031.80) in reserve every month, cfo.ai recommends $8,500 of opening cash if the data fee is reserved monthly, or $10,500 if the fee is paid upfront each October.
+
+**Contractor.** A $400-a-month contractor starts at 50 dockets, which is why December's result is lower than November's ($427.23).
+
+**CourtListener capacity.** Gainsay's default budget is 125 calls a day. At the model's conservative 2 calls per citation the plan passes it in January 2027. At the measured rate it passes it in July 2027. The measured rate is about 0.8, from 13 calls for 16 citations on ECF 21, since one lookup request resolves up to 60 citations. At 39 dockets the conservative case needs 258 calls a day without brief checks, or 281 with 10 a month. The cost of raised API access is in the model at $0, labeled unquoted, until Free Law Project prices it.
+
+## Data-fee tests
+
+| Annual data fee | Dockets to cover the fixed budget | First positive month | Lowest cash |
 |---|---|---|---|
-| 2026-10 | 3.0 | −$857 | 79 |
-| 2027-01 | 12.4 | −$601 | 136 |
-| 2027-07 | 33.4 | −$23 | 263 |
-| 2027-08 | 37.3 | +$84 | 286 |
-| 2027-12 | 54.2 | +$550 | 389 |
+| $0 | 30 | May 2027 | $2,074.28, April 2027 |
+| $3,000 | 39 | August 2027 | −$53.20, July 2027 |
+| $10,000 | 62 | none through December 2027 | −$7,639.26, December 2027 |
 
-Three things follow.
+At $10,000 the threshold rises to 77 dockets once the contractor cost is included, before brief revenue.
 
-1. **Cash is $53 short before break-even.** Losses from October 2026 through July 2027 add up to about $4,553. Opening cash of $5,000, less the $500 launch cost, leaves $4,500. On these inputs the business needs a buffer on top of the placeholder opening cash.
-2. **The API budget runs out first.** The model counts 2 CourtListener calls per citation and one docket poll a day. That passes Gainsay's default budget of 125 calls a day in January 2027, and reaches about 258 a day at 39 dockets. The input is conservative. On ECF 21, Gainsay made about 13 calls for 16 citations, because one lookup request resolves up to 60 citations at once. At that measured rate the docket polls become the larger load. Either way the default budget has to rise as dockets grow, and the model has no line for that yet.
-3. **The data fee swings break-even by 32 dockets.** The data-fee test sheet lists three annual fees without results. Run through the same formula they give 30 dockets with no fee, 39 at $3,000, and 62 at $10,000.
+## How the plan was checked
 
-These three come from the workbook's inputs, using the method above. They aren't cfo.ai output.
+The first export had drivers and unit economics but no monthly projection. Running its inputs forward showed the cash shortfall and the early API crossing. cfo.ai was then asked to add a forecast, a cash buffer, a capacity check with the measured API rate, and results for its data-fee tests. Every figure on this page was recomputed independently from the workbook inputs and matches to the cent.
+
+That review also corrected two errors in the first version of this page:
+- It left out the $400 contractor cost from 50 dockets.
+- It said docket polls would outweigh citation calls at the measured rate. At 39 dockets, citation calls are about 88 a day against 39 polls.
+
+Two inputs are still unquoted: the annual data fee and the price of raised API access.

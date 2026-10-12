@@ -90,7 +90,11 @@ Loading `.env` inside parentheses keeps the keys out of the rest of your shell. 
 
 ## Business model
 
-cfo.ai modeled Gainsay as legal software priced per watched docket, using the measured Claude cost of about 2.6 cents per citation. At $29 a docket a month, 39 dockets cover a fixed budget of $1,010.60. The export is in `docs/cfo-ai/`, and `docs/cfo-ai-plan.md` checks it and lists what it leaves out.
+cfo.ai modeled Gainsay as legal software priced per watched docket, using the measured Claude cost of about 2.6 cents per citation. At $29 a docket a month, 39 dockets cover a fixed budget of $1,010.60.
+
+Its forecast first turns a monthly profit in August 2027. It recommends $8,500 of opening cash. The default CourtListener budget runs out between January and July 2027, depending on calls per citation.
+
+Both exports are in `docs/cfo-ai/`, and `docs/cfo-ai-plan.md` sums them up.
 
 ## Known gaps
 

@@ -49,8 +49,8 @@ Optional, if time allows: LePhantomCite. On the held-out subset Gainsay scored F
 
 ## 2:40 to 3:00, cfo.ai
 
-Show the cfo.ai driver model (`docs/cfo-ai/gainsay-drivers.xlsx`), then `docs/cfo-ai-plan.md`.
+Show the revised cfo.ai plan (`docs/cfo-ai/gainsay-revised-plan.xlsx`), on its operating forecast sheet.
 
-> The plan is built on measured costs: about 2.6 cents of Claude per citation checked, and nothing for CourtListener. At $29 a docket a month, 39 dockets cover the fixed budget. Run forward, the plan comes up about $53 short before it breaks even, and the API budget runs out before the money does. (`docs/cfo-ai-plan.md`)
+> The plan is built on measured costs: about 2.6 cents of Claude per citation checked, and nothing for CourtListener. At $29 a docket a month, 39 dockets cover the fixed budget. The first version had no monthly forecast. Once it was added, cash dipped $53 below zero in July 2027, so cfo.ai now recommends $8,500 of opening cash. At the conservative API rate, the default CourtListener budget runs out in January 2027, before the cash does. (`docs/cfo-ai-plan.md`)
 
 Close on the repo URL.
