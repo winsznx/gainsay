@@ -136,7 +136,12 @@ def now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
-def connect(path: Path = DEFAULT_LEDGER_PATH) -> sqlite3.Connection:
+def connect(path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False) -> sqlite3.Connection:
+    """The ledger. read_only opens a published snapshot without touching it."""
+    if read_only:
+        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        return conn
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row

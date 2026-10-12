@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Gainsay{% endblock %}</title>
+  <meta name="description" content="Gainsay checks the case citations in the other side's federal court filings and keeps the evidence for every finding.">
   {% block head %}{% endblock %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,10 +14,18 @@
 <body>
   <header class="masthead">
     <a class="wordmark" href="/">Gainsay</a>
-    <p class="tagline">Checks the case citations in the other side's filings.</p>
+    <nav aria-label="Main">
+      {% set section = section | default("") %}
+      <a href="/"{% if section == "overview" %} aria-current="page"{% endif %}>Overview</a>
+      <a href="/docket"{% if section == "docket" %} aria-current="page"{% endif %}>Docket</a>
+      <a href="/runs"{% if section == "runs" %} aria-current="page"{% endif %}>Runs</a>
+    </nav>
   </header>
-  <main>
+  <main class="{% block main_class %}{% endblock %}">
     {% block content %}{% endblock %}
   </main>
+  <footer class="site-footer">
+    <p>Gainsay checks citations against free public sources (CourtListener) and keeps the evidence for each finding. It reports what those sources show, not legal conclusions. Built for #neatHack, October 2026.</p>
+  </footer>
 </body>
 </html>

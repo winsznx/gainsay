@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% set section = "docket" %}
+{% block title %}{{ docket.name }} docket | Gainsay{% endblock %}
+{% block content %}
+<section class="docket-head">
+  <p class="docket"><cite>{{ docket.name }}</cite>, No. {{ docket.docket_number }} ({{ court_cite(docket.court) }})</p>
+  <h1>{{ docket.checked | length }} filings checked, {{ docket.citations_checked }} citations</h1>
+  <p class="run-line">
+    {{ docket.entries | length }} docket entries seen. {{ docket.opposing | length }} were filed by the other side and are checked as they appear;
+    the rest are court orders and the client's own papers. {{ docket.citations_flagged }} citations have a problem in the latest run of each filing.
+  </p>
+  {% if budget %}
+  <p class="budget">
+    CourtListener budget: {{ budget.day_used }} of {{ budget.day_cap }} calls used in the last 24 hours, {{ budget.hour_used }} of {{ budget.hour_cap }} in the last hour.
+    {% if budget.day_used >= budget.day_cap and budget.next_free %}Paused until {{ budget.next_free }}, when the oldest calls age out.{% endif %}
+  </p>
+  {% endif %}
+</section>
+
+<section aria-labelledby="checked-heading">
+  <h2 id="checked-heading" class="section-title">Checked filings</h2>
+  <ol class="filings">
+    {% for entry in docket.checked %}
+    {% set report = entry.report %}
+    <li class="filing-row">
+      <div class="filing-id">
+        <span class="ecf">ECF {{ entry.entry_number }}</span>
+        <span class="filed">{{ entry.date_filed }}</span>
+        <span class="role role-{{ entry.role | replace(' ', '-') }}">{{ entry.role | capitalize }}</span>
+      </div>
+      <div class="filing-body">
+        <a class="filing-title" href="/runs/{{ report.run.id }}">{{ entry.summary }}</a>
+        <p class="filing-result">{{ report.headline }} Run {{ report.run.id }}, {{ report.run.status }}.</p>
+        {% if report.citations %}
+        <ol class="strip mini" aria-label="ECF {{ entry.entry_number }} citations in filing order">
+          {% for c in report.citations %}
+          <li class="seg s-{{ c.status | status_slug }}{% if c.in_quotation %} nested{% endif %}">
+            <a href="/runs/{{ report.run.id }}#c{{ c.ordinal }}"><span class="sr-only">{{ c.ordinal }}. {{ c.case_name or "Unresolved citation" }}: {{ c.status }}</span></a>
+          </li>
+          {% endfor %}
+        </ol>
+        {% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+
+<details class="others">
+  <summary>{{ docket.entries | length - docket.checked | length }} other docket entries, not checked</summary>
+  <ul>
+    {% for entry in docket.entries if not entry.report %}
+    <li><span class="ecf">ECF {{ entry.entry_number }}</span> {{ entry.summary }}</li>
+    {% endfor %}
+  </ul>
+</details>
+{% endblock %}

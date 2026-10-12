@@ -28,7 +28,7 @@ def test_run_page_shows_status_flag_and_evidence(tmp_path):
 def test_runs_page_and_missing_run(tmp_path):
     _, run_id = make_run(tmp_path)
     client = TestClient(create_app(tmp_path / "ledger.sqlite"))
-    assert f"/runs/{run_id}" in client.get("/").text
+    assert f"/runs/{run_id}" in client.get("/runs").text
     assert client.get("/runs/999").status_code == 404
 
 
@@ -58,3 +58,23 @@ def test_report_downloads_as_markdown_with_sources_and_evidence(tmp_path):
     assert "Westlaw and Lexis are outside the sources searched" in body
     assert "| existence | No | no case named Zicherman |" in body
     assert "(pincite off)" in body
+
+
+def test_landing_and_docket_pages_render(tmp_path):
+    _, run_id = make_run(tmp_path)
+    client = TestClient(create_app(tmp_path / "ledger.sqlite"))
+    landing = client.get("/")
+    assert landing.status_code == 200
+    assert "Check the other side" in landing.text
+    for word in ("fake", "fabricated", "hallucinated"):
+        assert word not in landing.text.lower()
+    assert client.get("/docket").status_code == 404
+
+
+def test_read_only_snapshot_is_served_without_writing(tmp_path):
+    _, run_id = make_run(tmp_path)
+    path = tmp_path / "ledger.sqlite"
+    before = path.stat().st_mtime_ns
+    client = TestClient(create_app(path, read_only=True))
+    assert client.get(f"/runs/{run_id}").status_code == 200
+    assert path.stat().st_mtime_ns == before

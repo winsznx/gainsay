@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% set section = "overview" %}
+{% block title %}Gainsay: check the other side's citations{% endblock %}
+{% block main_class %}landing{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Check the other side's citations before you answer them.</h1>
+  <p class="lede">
+    Point Gainsay at a federal court docket. It watches for the other side's filings, checks every case they cite
+    against the public record, and hands you the evidence: which cases can't be found, which quotes aren't in the
+    opinion, and which cases don't say what they're cited for.
+  </p>
+  <p class="cta">
+    {% if specimen %}<a class="button" href="/runs/{{ specimen.run.id }}">See it on Mata v. Avianca</a>{% endif %}
+    <a class="link" href="/docket">Watch the docket</a>
+  </p>
+</section>
+
+{% if specimen %}
+<section class="specimen" aria-labelledby="specimen-heading">
+  <p class="specimen-source">
+    <cite>{{ specimen.filing.case_name }}</cite>, ECF {{ specimen.filing.entry_number }}: the {{ specimen.filing.description | lower }}
+    at the center of the 2023 sanctions ruling.
+  </p>
+  <h2 id="specimen-heading">{{ specimen.headline }}</h2>
+  <ol class="strip" aria-label="Citations in the order the filing makes them">
+    {% for c in specimen.citations %}
+    <li class="seg s-{{ c.status | status_slug }}{% if c.in_quotation %} nested{% endif %}">
+      <a href="/runs/{{ specimen.run.id }}#c{{ c.ordinal }}"><span class="sr-only">{{ c.ordinal }}. {{ c.case_name or "Unresolved citation" }}: {{ c.status }}</span></a>
+    </li>
+    {% endfor %}
+  </ol>
+  <dl class="tally">
+    {% for status, count in specimen.status_counts.items() %}
+    <div class="s-{{ status | status_slug }}"><dt>{{ status }}</dt><dd>{{ count }}</dd></div>
+    {% endfor %}
+  </dl>
+</section>
+{% endif %}
+
+{% if score %}
+<section class="band" aria-labelledby="court-heading">
+  <h2 id="court-heading">Scored against the court</h2>
+  <p class="band-lede">
+    In June 2023 the court ruled on which of this filing's cases don't exist and which real ones were misused.
+    Gainsay never sees that ruling while it checks; it's used only afterwards, to score the run.
+    {{ score.summary["true positive"] }} of the {{ score.summary["true positive"] + score.summary["false negative"] }}
+    cases the court found don't exist come back "Not found", no real case does, and
+    {{ score.summary.agree }} of {{ score.cases | length }} statuses match the court's findings.
+  </p>
+  <table class="verdicts">
+    <thead><tr><th scope="col">Case cited</th><th scope="col">The court found</th><th scope="col">Gainsay says</th></tr></thead>
+    <tbody>
+      {% for case in score.cases %}
+      <tr>
+        <td><cite>{{ case.case_name }}</cite></td>
+        <td>{{ FINDINGS[case.court_finding] }}</td>
+        <td class="s-{{ (case.case_status or 'Incomplete') | status_slug }}"><span class="verdict-text">{{ case.case_status or "Incomplete" }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">
+    {% set missed = score.summary["false negative"] %}
+    {% if missed %}The other {{ missed }} case{{ "s" if missed != 1 }} the court found don't exist {{ "are" if missed != 1 else "is" }} cited only to Westlaw, which free
+    sources can't see, so Gainsay says "Unverifiable: outside free sources" instead of calling {{ "them" if missed != 1 else "it" }} missing.{% endif %}
+    Run {{ score.run_id }}, commit <code>{{ score.run_version }}</code>.
+  </p>
+</section>
+{% endif %}
+
+<section class="band" aria-labelledby="checks-heading">
+  <h2 id="checks-heading">Five questions for every citation</h2>
+  <p class="band-lede">Each answer is stored with its reason and the source response it rests on. The first failure, in this order, becomes the citation's status.</p>
+  <ol class="checks-list">
+    <li><strong>Does the case exist?</strong> One lookup resolves every cite in the filing, then a search by name, court and year, then the RECAP docket. A cite to a reporter series that doesn't exist fails on its own.</li>
+    <li><strong>Does the cite point to it?</strong> The case at the cited volume and page has to carry the name the filing gives it.</li>
+    <li><strong>Are the quoted words in the opinion?</strong> Each quoted passage is matched against the opinion text, allowing for OCR slips, brackets and ellipses.</li>
+    <li><strong>Does the opinion support the statement?</strong> Claude reads passages the code picked from the opinion and nothing else from the filing but the one sentence.</li>
+    <li><strong>Is the pincite inside the opinion?</strong> Checked against the reporter's page breaks. A bad page is flagged next to the status.</li>
+  </ol>
+</section>
+
+<section class="band" aria-labelledby="agent-heading">
+  <h2 id="agent-heading">It runs without you watching</h2>
+  <div class="facts">
+    {% if docket %}
+    <p><strong>It watches the docket.</strong> {{ docket.entries | length }} entries on the Mata docket, {{ docket.opposing | length }} filed by the other side, {{ docket.checked | length }} checked, {{ docket.citations_checked }} citations in all. It tells the other side's filings from the court's by who filed them.</p>
+    {% endif %}
+    <p><strong>It works inside a budget.</strong> CourtListener allows 125 calls a day. At the limit Gainsay pauses, shows when the quota refills, and resumes from its ledger without repeating a single settled check.</p>
+    <p><strong>It recovers.</strong> Dropped connections are retried. A crash or an outage mid-run resumes from the last recorded finding.</p>
+    <p><strong>It shows its work.</strong> While a run is active, its page says in one sentence what it just did and what it does next, and every attempt is a neatlogs trace.</p>
+  </div>
+</section>
+
+{% if benchmark %}
+<section class="band" aria-labelledby="bench-heading">
+  <h2 id="bench-heading">Measured, including where it loses</h2>
+  <p class="band-lede">
+    On {{ benchmark.size }} held-out excerpts from the LePhantomCite benchmark, scored on its two citation-level error
+    types, Gainsay reached F1 {{ "%.2f" | format(benchmark.arms.gainsay.f1) }} against
+    {{ "%.2f" | format(benchmark.arms["lookup-only"].f1) }} for a database lookup alone and
+    {{ "%.2f" | format(benchmark.arms["no-tools"].f1) }} for Claude with no tools. Because it doesn't beat both
+    baselines, Gainsay makes no quality claim from that benchmark. Its claims are the ones it can source.
+  </p>
+</section>
+{% endif %}
+
+<section class="band" aria-labelledby="built-heading">
+  <h2 id="built-heading">Built with</h2>
+  <ul class="built">
+    <li><strong>neatlogs</strong> traces every run attempt, one span per citation, tagged with the run version.</li>
+    <li><strong>Entire</strong> checkpoints every commit with the agent session behind it.</li>
+    <li><strong>cfo.ai</strong> planned the business on measured costs: about 2.6 cents of Claude per citation.</li>
+    <li><strong>CourtListener</strong> and RECAP from Free Law Project for dockets, filings and opinions.</li>
+    <li><strong>Claude</strong> for the proposition check, and <strong>eyecite</strong> for finding citations.</li>
+  </ul>
+</section>
+{% endblock %}

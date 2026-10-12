@@ -1,8 +1,12 @@
 """Server-rendered pages over the ledger.
 
     .venv/bin/uvicorn gainsay.web.app:app --reload
+
+GAINSAY_LEDGER points the site at another ledger file, and GAINSAY_READ_ONLY=1
+opens it read-only, which is how the published snapshot is served.
 """
 
+import os
 import re
 import sqlite3
 from pathlib import Path
@@ -15,6 +19,7 @@ from fastapi.templating import Jinja2Templates
 
 from gainsay.checker import CHECKS
 from gainsay.export import render_markdown
+from gainsay.overview import budget_status, docket_overview, held_out_benchmark, latest_mata_score
 from gainsay.ledger import DEFAULT_LEDGER_PATH, connect
 from gainsay.report import list_runs, load_run
 
@@ -44,7 +49,17 @@ def sentence(text: str) -> str:
     return text[:1].upper() + text[1:]
 
 
-def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH) -> FastAPI:
+FINDINGS = {
+    "does_not_exist": "Does not exist",
+    "does_not_exist_as_cited": "Does not exist as cited",
+    "does_not_support": "Doesn't support the proposition",
+    "quote_not_in_opinion": "Quoted language not in the opinion",
+    "supports": "Supports it",
+    "supports_in_part": "Supports it in part",
+}
+
+
+def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False) -> FastAPI:
     app = FastAPI(title="Gainsay", docs_url=None, redoc_url=None)
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
     templates = Jinja2Templates(directory=HERE / "templates")
@@ -55,12 +70,33 @@ def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH) -> FastAPI:
         CHECK_LABELS=CHECK_LABELS,
         OUTCOME_LABELS=OUTCOME_LABELS,
         court_cite=lambda court_id: _COURT_CITES.get(court_id) or court_id,
+        FINDINGS=FINDINGS,
     )
 
     def ledger() -> sqlite3.Connection:
-        return connect(ledger_path)
+        return connect(ledger_path, read_only=read_only)
 
     @app.get("/", response_class=HTMLResponse)
+    def landing(request: Request):
+        conn = ledger()
+        score = latest_mata_score()
+        specimen = load_run(conn, score["run_id"]) if score else None
+        return templates.TemplateResponse(request, "landing.html", {
+            "specimen": specimen,
+            "score": score if specimen else None,
+            "docket": docket_overview(conn),
+            "benchmark": held_out_benchmark(),
+        })
+
+    @app.get("/docket", response_class=HTMLResponse)
+    def docket(request: Request):
+        overview = docket_overview(ledger())
+        if overview is None:
+            raise HTTPException(status_code=404, detail="No docket in the ledger yet")
+        budget = None if read_only else budget_status()
+        return templates.TemplateResponse(request, "docket.html", {"docket": overview, "budget": budget})
+
+    @app.get("/runs", response_class=HTMLResponse)
     def runs(request: Request):
         conn = ledger()
         rows = [(run, load_run(conn, run["id"])) for run in list_runs(conn)]
@@ -87,4 +123,7 @@ def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH) -> FastAPI:
     return app
 
 
-app = create_app()
+app = create_app(
+    Path(os.environ.get("GAINSAY_LEDGER", DEFAULT_LEDGER_PATH)),
+    read_only=os.environ.get("GAINSAY_READ_ONLY") == "1",
+)
