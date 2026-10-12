@@ -10,6 +10,7 @@ snapshot in deploy/ read-only, since checks run where the keys and quota are.
 import os
 import re
 import sqlite3
+from functools import cache
 from pathlib import Path
 
 from courts_db import courts
@@ -17,6 +18,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup
 
 from gainsay.checker import CHECKS
 from gainsay.courtlistener import BACKOFF_SECONDS, DAY, HOUR, MAX_RETRIES, MINUTE
@@ -42,6 +44,19 @@ OUTCOME_LABELS = {
     "unverifiable": "Can't tell",
     "not_applicable": "Not applicable",
 }
+CHECK_ICONS = {
+    "existence": "search",
+    "identity": "id-card",
+    "quotation": "quote",
+    "proposition": "scale",
+    "pincite": "file-digit",
+}
+OUTCOME_ICONS = {
+    "pass": "check",
+    "fail": "x",
+    "unverifiable": "circle-help",
+    "not_applicable": "minus",
+}
 STATUS_SET_BY = {
     "existence": NOT_FOUND,
     "identity": WRONG_CASE,
@@ -57,6 +72,18 @@ def status_slug(status: str) -> str:
 
 def sentence(text: str) -> str:
     return text[:1].upper() + text[1:]
+
+
+@cache
+def _lucide_svg(name: str) -> str:
+    """A vendored lucide-static icon, without its license comment, on one line."""
+    svg = (HERE / "icons" / f"{name}.svg").read_text()
+    return " ".join(svg[svg.index("<svg"):].split())
+
+
+def icon(name: str, size: int = 18) -> Markup:
+    svg = _lucide_svg(name).replace('width="24" height="24"', f'width="{size}" height="{size}"', 1)
+    return Markup(svg.replace("<svg ", '<svg aria-hidden="true" focusable="false" ', 1))
 
 
 def cite_without_name(citation: CitationReport) -> str:
@@ -109,6 +136,9 @@ def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False)
         MAX_RETRIES=MAX_RETRIES,
         BACKOFF_SECONDS=BACKOFF_SECONDS,
         court_cite=lambda court_id: _COURT_CITES.get(court_id) or court_id,
+        icon=icon,
+        CHECK_ICONS=CHECK_ICONS,
+        OUTCOME_ICONS=OUTCOME_ICONS,
         FINDINGS=FINDINGS,
         DOCKET=load_docket_config(),
         READ_ONLY=read_only,

@@ -1,7 +1,15 @@
 from fastapi.testclient import TestClient
 
 from gainsay.test_report import make_run
-from gainsay.web.app import create_app, status_slug
+from gainsay.web.app import CHECK_ICONS, OUTCOME_ICONS, create_app, icon, status_slug
+
+
+def test_icons_inline_from_the_vendored_lucide_set():
+    svg = icon("scale", 16)
+    assert svg.startswith('<svg aria-hidden="true" focusable="false"')
+    assert 'width="16" height="16"' in svg and "@license" not in svg
+    for name in [*CHECK_ICONS.values(), *OUTCOME_ICONS.values()]:
+        assert icon(name).startswith("<svg")
 
 
 def test_status_slugs_match_the_stylesheet():
@@ -70,6 +78,7 @@ def test_landing_and_docket_pages_render(tmp_path):
     landing = client.get("/")
     assert landing.status_code == 200
     assert "Check the other side" in landing.text
+    assert "Calls per day</dt><dd>125" in landing.text
     for word in ("fake", "fabricated", "hallucinated"):
         assert word not in landing.text.lower()
     assert client.get("/docket").status_code == 404

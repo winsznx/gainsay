@@ -19,10 +19,10 @@
 </header>
 
 <dl class="metrics">
-  <div><dt>Docket entries seen</dt><dd>{{ docket.entries | length }}</dd></div>
-  <div><dt>Filed by the other side</dt><dd>{{ docket.opposing | length }}</dd></div>
-  <div><dt>Filings checked</dt><dd>{{ docket.checked | length }}</dd></div>
-  <div><dt>Citations with a problem</dt><dd>{{ docket.citations_flagged }}<small> of {{ docket.citations_checked }}</small></dd></div>
+  <div><dt>{{ icon("files", 15) }}Docket entries seen</dt><dd>{{ docket.entries | length }}</dd></div>
+  <div><dt>{{ icon("users", 15) }}Filed by the other side</dt><dd>{{ docket.opposing | length }}</dd></div>
+  <div><dt>{{ icon("file-check", 15) }}Filings checked</dt><dd>{{ docket.checked | length }}</dd></div>
+  <div><dt>{{ icon("triangle-alert", 15) }}Citations with a problem</dt><dd>{{ docket.citations_flagged }}<small> of {{ docket.citations_checked }}</small></dd></div>
 </dl>
 
 {% if budget %}

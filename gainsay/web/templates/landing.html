@@ -10,8 +10,8 @@
     against CourtListener, and keeps the evidence behind each finding.
   </p>
   <div class="hero-actions">
-    {% if specimen %}<a class="btn btn-dark" href="/runs/{{ specimen.run.id }}">See the ECF {{ specimen.filing.entry_number }} run</a>{% endif %}
-    <a class="btn btn-light" href="/docket">Open the docket</a>
+    {% if specimen %}<a class="btn btn-dark" href="/runs/{{ specimen.run.id }}">{{ icon("file-search", 17) }}See the ECF {{ specimen.filing.entry_number }} run</a>{% endif %}
+    <a class="btn btn-light" href="/docket">{{ icon("landmark", 17) }}Open the docket</a>
   </div>
 </section>
 
@@ -54,7 +54,7 @@
     {% if score %}
     {% set agree = score.summary.agree %}
     <div class="score-float">
-      <strong>{{ agree }} of {{ score.cases | length }} match the court</strong>
+      <strong>{{ icon("scale", 16) }}{{ agree }} of {{ score.cases | length }} match the court</strong>
       <span class="bar"><span style="width: {{ (100 * agree / (score.cases | length)) | round | int }}%"></span></span>
       <p>Scored after the run against the sanctions opinion, which the agent never sees.</p>
     </div>
@@ -66,12 +66,17 @@
 <section class="sources" aria-label="Sources and tools">
   <p>Checks run on free public sources and leave a trace</p>
   <ul>
-    <li><span aria-hidden="true">CL</span>CourtListener</li>
-    <li><span aria-hidden="true">R</span>RECAP</li>
-    <li><span aria-hidden="true">ey</span>eyecite</li>
-    <li><span aria-hidden="true">C</span>Claude</li>
-    <li><span aria-hidden="true">n</span>neatlogs</li>
-    <li><span aria-hidden="true">E</span>Entire</li>
+    {% for name, logo, href, wordmark in [
+      ("CourtListener", "courtlistener.svg", "https://www.courtlistener.com", false),
+      ("RECAP", "recap.svg", "https://free.law/recap", false),
+      ("eyecite", "eyecite.svg", "https://github.com/freelawproject/eyecite", false),
+      ("Claude", "claude.svg", "https://www.anthropic.com/claude", false),
+      ("neatlogs", "neatlogs.png", "https://neatlogs.com", false),
+      ("Entire", "entire-icon.svg", "https://entire.io", false),
+      ("RapidFuzz", "rapidfuzz.svg", "https://github.com/rapidfuzz/RapidFuzz", true),
+    ] %}
+    <li><a href="{{ href }}"{% if wordmark %} class="wordmark"{% endif %}><img src="{{ url_for('static', path='logos/' ~ logo) }}" alt="" height="24"><span{% if wordmark %} class="sr-only"{% endif %}>{{ name }}</span></a></li>
+    {% endfor %}
   </ul>
 </section>
 
@@ -102,7 +107,7 @@
     <ol class="steps">
       {% for name, question, detail in steps %}
       <li{% if name == busiest.name %} class="current"{% endif %}>
-        <span class="num">0{{ loop.index }}</span>
+        <span class="num" title="Check {{ loop.index }}">{{ icon(CHECK_ICONS[name], 18) }}</span>
         <div>
           <strong>{{ question }}</strong>
           <p>{{ detail }}</p>
@@ -152,7 +157,7 @@
           <td><cite>{{ case.case_name }}</cite></td>
           <td>{{ FINDINGS[case.court_finding] }}</td>
           <td><span class="tag s-{{ status | status_slug }}">{{ status }}</span></td>
-          <td class="agree">{{ "Yes" if case.agrees_with_court else "No" }}</td>
+          <td class="agree{{ " differs" if not case.agrees_with_court }}">{{ icon("check" if case.agrees_with_court else "x", 15) }}{{ "Yes" if case.agrees_with_court else "No" }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -174,6 +179,7 @@
   </div>
   <div class="cards">
     <article class="card">
+      <span class="icon-tile">{{ icon("radar", 20) }}</span>
       <h3>Watches the docket</h3>
       <p>It tells the other side's filings from the court's and the client's by who filed them, and checks only what's new.</p>
       {% if docket %}
@@ -188,15 +194,17 @@
       {% endif %}
     </article>
     <article class="card card-blue">
+      <span class="icon-tile">{{ icon("gauge", 20) }}</span>
       <h3>Works inside a budget</h3>
       <p>CourtListener caps calls. At the limit Gainsay pauses, says when the quota refills, and resumes from its ledger without redoing a settled check.</p>
       <div class="inset">
         <dl>
-          {% for limit in LIMITS %}<dt>Calls a {{ limit.name }}</dt><dd>{{ limit.max_calls }}</dd>{% endfor %}
+          {% for limit in LIMITS %}<dt>Calls per {{ limit.window }}</dt><dd>{{ limit.max_calls }}</dd>{% endfor %}
         </dl>
       </div>
     </article>
     <article class="card">
+      <span class="icon-tile">{{ icon("rotate-ccw", 20) }}</span>
       <h3>Recovers where it stopped</h3>
       <p>Dropped connections are retried. A crash or an outage mid-run resumes from the last recorded finding, and every attempt is its own neatlogs trace.</p>
       <div class="inset">
@@ -238,12 +246,20 @@
     <h2 id="built-heading">Every run leaves a trail you can follow.</h2>
   </div>
   <div class="sponsors">
-    <article class="sponsor"><span class="mark-tile">n</span><h3>neatlogs</h3><p>One trace per run attempt and one span per citation check, tagged with the commit the run used.</p></article>
-    <article class="sponsor"><span class="mark-tile">E</span><h3>Entire</h3><p>Checkpoints every commit with the agent session behind it, so each change has its reasoning attached.</p></article>
-    <article class="sponsor"><span class="mark-tile">C</span><h3>Claude</h3><p>Answers one question per citation: do these opinion passages support this sentence. It never sees the rest of the filing.</p></article>
-    <article class="sponsor"><span class="mark-tile">CL</span><h3>CourtListener and RECAP</h3><p>Free Law Project's dockets, filings and opinions. Every call goes through one rate-limited client.</p></article>
-    <article class="sponsor"><span class="mark-tile">ey</span><h3>eyecite</h3><p>Finds the citations in the filing text locally, before a single network call.</p></article>
-    <article class="sponsor"><span class="mark-tile">rf</span><h3>rapidfuzz</h3><p>Matches quoted words against opinion text that has OCR slips, brackets and ellipses.</p></article>
+    {% for name, logos, href, about in [
+      ("neatlogs", ["neatlogs.png"], "https://neatlogs.com", "One trace per run attempt and one span per citation check, tagged with the commit the run used."),
+      ("Entire", ["entire.svg"], "https://entire.io", "Checkpoints every commit with the agent session behind it, so each change has its reasoning attached."),
+      ("Claude", ["claude.svg"], "https://www.anthropic.com/claude", "Answers one question per citation: do these opinion passages support this sentence. It never sees the rest of the filing."),
+      ("CourtListener and RECAP", ["courtlistener.svg", "recap.svg"], "https://www.courtlistener.com", "Free Law Project's dockets, filings and opinions. Every call goes through one rate-limited client."),
+      ("eyecite", ["eyecite.svg"], "https://github.com/freelawproject/eyecite", "Free Law Project's citation parser finds the citations in the filing text locally, before a single network call."),
+      ("RapidFuzz", ["rapidfuzz.svg"], "https://github.com/rapidfuzz/RapidFuzz", "Matches quoted words against opinion text that has OCR slips, brackets and ellipses."),
+    ] %}
+    <a class="sponsor" href="{{ href }}">
+      <span class="logo-row">{% for logo in logos %}<span class="logo-tile"><img src="{{ url_for('static', path='logos/' ~ logo) }}" alt="" height="30"></span>{% endfor %}</span>
+      <h3>{{ name }}</h3>
+      <p>{{ about }}</p>
+    </a>
+    {% endfor %}
   </div>
 </section>
 
@@ -252,8 +268,8 @@
   <h2>See every finding and the evidence behind it.</h2>
   <p>Run {{ specimen.run.id }} on ECF {{ specimen.filing.entry_number }}, with the opinion text each finding rests on.</p>
   <div class="hero-actions">
-    <a class="btn btn-light" href="/runs/{{ specimen.run.id }}">Open run {{ specimen.run.id }}</a>
-    <a class="btn btn-ghost" href="/runs/{{ specimen.run.id }}/report.md">Download the report</a>
+    <a class="btn btn-light" href="/runs/{{ specimen.run.id }}">{{ icon("file-search", 17) }}Open run {{ specimen.run.id }}</a>
+    <a class="btn btn-ghost" href="/runs/{{ specimen.run.id }}/report.md">{{ icon("download", 17) }}Download the report</a>
   </div>
 </section>
 {% endif %}

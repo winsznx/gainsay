@@ -11,7 +11,7 @@
 <a href="/runs">Runs</a><span class="sep" aria-hidden="true">/</span>
 <span aria-current="page">Run {{ run.id }}, ECF {{ filing.entry_number }}</span>
 {% endblock %}
-{% block topbar_end %}<a class="btn btn-light btn-small" href="{{ here }}/report.md">Download the report</a>{% endblock %}
+{% block topbar_end %}<a class="btn btn-light btn-small" href="{{ here }}/report.md">{{ icon("download", 16) }}Download the report</a>{% endblock %}
 {% block content %}
 {% if report.progress %}
 <section class="notice{% if report.active %} live{% endif %}" aria-live="polite">
@@ -105,7 +105,10 @@
         {% for name in CHECKS %}
         {% set result = c.checks.get(name) %}
         <li class="o-{{ result.outcome if result else 'pending' }}">
-          <span class="check-top"><b>{{ CHECK_LABELS[name] }}</b><span class="answer">{{ OUTCOME_LABELS[result.outcome] if result else "Not run" }}</span></span>
+          <span class="check-top">
+            <b>{{ icon(CHECK_ICONS[name], 15) }}{{ CHECK_LABELS[name] }}</b>
+            <span class="answer">{{ icon(OUTCOME_ICONS[result.outcome] if result else "minus", 14) }}{{ OUTCOME_LABELS[result.outcome] if result else "Not run" }}</span>
+          </span>
           {% if result %}<p>{{ result.reason | sentence }}</p>{% endif %}
           {% if name == "quotation" and result and result.evidence.passages %}
           {% for match in result.evidence.passages %}
@@ -116,11 +119,11 @@
         {% endfor %}
       </ul>
     </div>
-    {% if c.opinion_url %}<a class="insp-link" href="{{ c.opinion_url }}">Read the opinion on CourtListener</a>{% endif %}
+    {% if c.opinion_url %}<a class="insp-link" href="{{ c.opinion_url }}">Read the opinion on CourtListener{{ icon("external-link", 14) }}</a>{% endif %}
 
     {% if report.traces %}
     <div class="side-card">
-      <h4>neatlogs traces for this run, one per attempt</h4>
+      <h4>{{ icon("activity", 14) }}neatlogs traces for this run, one per attempt</h4>
       <ol>
         {% for trace in report.traces %}
         <li><code>{{ trace.trace_id }}</code>, {{ trace.outcome or "running" }}{% if trace.reason %}: {{ trace.reason }}{% endif %}</li>

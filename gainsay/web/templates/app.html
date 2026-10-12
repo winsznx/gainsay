@@ -8,33 +8,25 @@
     <div>
       <a class="logo" href="/">{{ mark() }}<span>GAINSAY</span></a>
       <a class="workspace-card" href="/docket">
-        <span class="avatar" aria-hidden="true">M</span>
+        <span class="avatar">{{ icon("scale", 17) }}</span>
         <span>
           <strong>{{ DOCKET.name }}</strong>
           <span>No. {{ DOCKET.docket_number }} ({{ court_cite(DOCKET.court) }})</span>
         </span>
       </a>
       <nav class="rail-links" aria-label="Main">
-        <a href="/docket"{% if section == "docket" %} aria-current="page"{% endif %}>
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2.5" y="3" width="13" height="12" rx="2.5"/><path d="M2.5 7h13M6 10.5h6"/></svg>
-          Docket
-        </a>
-        <a href="/runs"{% if section == "runs" %} aria-current="page"{% endif %}>
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 5h12M3 9h12M3 13h7"/></svg>
-          Runs
-        </a>
-        <a href="/">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l6-5 6 5v6.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>
-          Overview
-        </a>
+        <a href="/docket"{% if section == "docket" %} aria-current="page"{% endif %}>{{ icon("landmark") }}Docket</a>
+        <a href="/runs"{% if section == "runs" %} aria-current="page"{% endif %}>{{ icon("list-checks") }}Runs</a>
+        <a href="/">{{ icon("house") }}Overview</a>
       </nav>
       {% set scored = scored_run_id() %}
       {% if scored %}
-      <div class="rail-action"><a class="btn btn-dark" href="/runs/{{ scored }}">Open the scored run</a></div>
+      <div class="rail-action"><a class="btn btn-dark" href="/runs/{{ scored }}">{{ icon("file-search", 17) }}Open the scored run</a></div>
       {% endif %}
     </div>
     <div>
       <div class="help-card">
+        <span class="icon-tile">{{ icon("shield-check", 17) }}</span>
         <strong>Evidence decides every finding</strong>
         <p>Each check stores its reason and the source response it rests on. A status says what free public sources show, nothing more.</p>
         <a href="/#checks">How the checks work</a>
