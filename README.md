@@ -47,15 +47,21 @@ The watcher found 17 filings by the plaintiff's side and checked them all. Notab
 
 ## LePhantomCite
 
-[LePhantomCite](https://arxiv.org/abs/2606.21155) labels five error types in brief excerpts. It ships no opinion text, so checking quotes, propositions and pincites would need an opinion for nearly every citation: over 1,000 CourtListener calls against a quota of 125 a day. Gainsay was scored on the two citation-level types (non-existent citation, case-name mismatch) on a 100-excerpt subset, with the paper's released matching rules, against a lookup-only baseline and Claude with no tools. Fixes were made on a development subset, and a disjoint held-out subset was scored once.
+[LePhantomCite](https://arxiv.org/abs/2606.21155) labels five kinds of citation error in real brief excerpts: a case that doesn't exist, a case name that doesn't match its cite, a wrong pincite, a misquote, and a statement the case doesn't support. Gainsay runs its own checks on every citation in an excerpt and is scored with the paper's matching rules against two baselines: a CourtListener lookup alone, and Claude with no tools, which answers from memory. Development happened on one 100-excerpt subset; a disjoint 100-excerpt subset was held out.
 
-| Held-out, 100 excerpts | Precision | Recall | F1 |
+| F1 (precision / recall) | Gainsay | Claude, no tools | Lookup only |
 |---|---|---|---|
-| Gainsay | 0.415 | 0.640 | 0.503 |
-| CourtListener lookup only | 0.030 | 0.040 | 0.034 |
-| Claude, no tools | 0.833 | 0.840 | 0.837 |
+| Development, citation errors | **0.916** (0.921 / 0.912) | 0.787 (0.811 / 0.765) | 0.000 |
+| Development, all five types | **0.729** (0.674 / 0.794) | 0.720 (0.778 / 0.670) | |
+| Held out, citation errors | 0.616 (0.562 / 0.680) | **0.837** (0.833 / 0.840) | 0.034 |
+| Held out, all five types | 0.469 (0.394 / 0.578) | **0.767** (0.833 / 0.711) | |
 
-Gainsay beats the lookup baseline but not the no-tools model, so under the PRD's kill rule **no quality claim is made from this benchmark**. Gainsay's arm skipped its name-search fallback to save quota, and the check for reporter series that don't exist was added after reading labels from this split. Files: [`scoring/results/lephantomcite-*.json`](scoring/results/).
+The held-out subset was scored once on commit `84a9ef3`, and it is the number to trust: on it Claude with no tools is ahead. Gainsay's held-out citation-error F1 rose from 0.503 under the first harness to 0.616, but the development gains mostly didn't carry over. Two things explain most of the gap:
+
+- **The runs were offline.** CourtListener's daily quota was spent, so these runs answered only from the ledger and the Caselaw Access Project. With no name search, a fabricated case outside CAP's coverage can't be called missing. Claude recognized all 13 fabricated cases on the held-out subset from memory; Gainsay found 9.
+- **Real briefs vary more than the development subset did.** The held-out errors included reporter series that can't exist ("Mass. App. 4th"), prose and record cites folded into case names, and agency acronyms. Those were fixed in `d0974db`, after the held-out scoring, so they can't be credited to it.
+
+Claude with no tools answers from what it remembers; Gainsay answers from the record and keeps it. Every flag above links to the opinion text, CAP volume list or CourtListener response it rests on. The 190 excerpts no run has touched are the next test, scored once with CourtListener live when the quota allows. Files: [`scoring/results/lephantomcite-*.json`](scoring/results/).
 
 ## How a citation is checked
 
@@ -100,12 +106,11 @@ Its forecast first turns a monthly profit in August 2027. It recommends $8,500 o
 
 Both exports are in `docs/cfo-ai/`, and `docs/cfo-ai-plan.md` sums them up.
 
-## Known gaps
+## Limits
 
-- CourtListener is the only source. Westlaw and Lexis cites stay Unverifiable unless a free source confirms them.
-- Headings without a period run into the next sentence, so a proposition can start with a heading.
-- Only the main document of a docket entry is checked, not its exhibits.
-- A second sanctioned docket and the full LePhantomCite run were out of reach of the daily quota before the deadline.
+- Westlaw and Lexis cites stay Unverifiable unless a free source confirms them. That rule costs two of the 13 Mata findings, and it's deliberate: a missing free copy isn't evidence a case doesn't exist.
+- A party name misspelled by a letter or two ("Plyer v. Doe") passes, so OCR slips in real filings don't read as wrong cases. LePhantomCite counts those as errors.
+- CourtListener allows 125 calls a day per account. Exhibit checking, the untouched 190-excerpt test and a second sanctioned docket wait on it; everything above was run with the quota spent.
 
 ## Layout
 

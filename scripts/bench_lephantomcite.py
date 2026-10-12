@@ -44,6 +44,7 @@ from gainsay.existence import Authority, Lookup
 from gainsay.extract import extract
 from gainsay.ledger import connect, now
 from gainsay.proposition import ClaudeJudge, MissingCredentials, anthropic_client
+from gainsay.version import run_version
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA = REPO_ROOT / "data" / "bench" / "lephantomcite" / "eval.jsonl"
@@ -262,6 +263,7 @@ def main() -> int:
             "indices": [e.index for e in excerpts],
         },
         "scored_at": now(),
+        "version": run_version(),
         "courtlistener": args.courtlistener,
         "courtlistener_calls_this_run": api.calls,
         "courtlistener_served_from_ledger": api.cache_hits,
