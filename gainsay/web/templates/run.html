@@ -1,96 +1,112 @@
-{% extends "base.html" %}
+{% extends "app.html" %}
+{% from "_macros.html" import rail, strip, tally %}
 {% set section = "runs" %}
 {% set filing = report.filing %}
 {% set run = report.run %}
-{% block title %}Run {{ run.id }}: {{ filing.case_name }} | Gainsay{% endblock %}
+{% set here = "/runs/" ~ run.id %}
+{% block title %}Run {{ run.id }}: {{ filing.case_name }}, ECF {{ filing.entry_number }} | Gainsay{% endblock %}
 {% block head %}{% if report.active %}<meta http-equiv="refresh" content="2">{% endif %}{% endblock %}
+{% block crumbs %}
+<a href="/docket">Docket</a><span class="sep" aria-hidden="true">/</span>
+<a href="/runs">Runs</a><span class="sep" aria-hidden="true">/</span>
+<span aria-current="page">Run {{ run.id }}, ECF {{ filing.entry_number }}</span>
+{% endblock %}
+{% block topbar_end %}<a class="btn btn-light btn-small" href="{{ here }}/report.md">Download the report</a>{% endblock %}
 {% block content %}
 {% if report.progress %}
-<section class="now{% if report.active %} live{% endif %}" aria-live="polite">
-  <p class="now-line">{{ report.progress.narration }}</p>
-  {% if report.progress.wait_seconds is not none and report.run.status == "paused" %}
-  <p class="now-wait">CourtListener quota refills in {{ report.progress.wait_seconds // 60 }}m {{ report.progress.wait_seconds % 60 }}s. {{ report.progress.queued }} citations queued.</p>
-  {% endif %}
-  {% if report.progress.next_actions %}
-  <p class="now-next">Next: {{ report.progress.next_actions | join("; ") }}</p>
-  {% endif %}
+<section class="notice{% if report.active %} live{% endif %}" aria-live="polite">
+  <span class="dot" aria-hidden="true"></span>
+  <div>
+    <p class="now-line">{{ report.progress.narration }}</p>
+    {% if report.progress.wait_seconds is not none and run.status == "paused" %}
+    <p class="meta">CourtListener quota refills in {{ report.progress.wait_seconds // 60 }}m {{ report.progress.wait_seconds % 60 }}s. {{ report.progress.queued }} citations queued.</p>
+    {% endif %}
+    {% if report.progress.next_actions %}
+    <p class="meta">Next: {{ report.progress.next_actions | join("; ") }}</p>
+    {% endif %}
+  </div>
 </section>
 {% endif %}
-<section class="filing">
-  <p class="docket">
-    <cite>{{ filing.case_name }}</cite>, No. {{ filing.docket_number }} ({{ court_cite(filing.court) }}),
-    ECF {{ filing.entry_number }}: {{ filing.description }}
-  </p>
-  <h1>{{ report.headline }}</h1>
-  <p class="run-line">
-    Run {{ run.id }} on commit <code>{{ run.version }}</code>, {{ run.status }}{% if run.status_reason %} ({{ run.status_reason }}){% endif %}.
-    {% set incomplete = report.status_counts.get("Incomplete", 0) %}
-    {% if incomplete %}{{ incomplete }} citation{{ "s are" if incomplete != 1 else " is" }} missing a check this run didn't include.{% endif %}
-    {% if report.pincite_flags %}{{ report.pincite_flags }} pincite{{ "s point" if report.pincite_flags != 1 else " points" }} past the opinion's pages.{% endif %}
-    <a href="/runs/{{ run.id }}/report.md">Download the report</a>
-  </p>
 
-  <ol class="strip" aria-label="Citations in the order the filing makes them">
-    {% for c in report.citations %}
-    <li class="seg s-{{ c.status | status_slug }}{% if c.in_quotation %} nested{% endif %}">
-      <a href="#c{{ c.ordinal }}"><span class="sr-only">{{ c.ordinal }}. {{ c.case_name or "Unresolved citation" }}: {{ c.status }}</span></a>
-    </li>
-    {% endfor %}
-  </ol>
-  <p class="strip-note">One bar per citation, in filing order. Short bars sit inside a passage the filing quotes from another case.</p>
-
-  {% if report.traces %}
-  <div class="traces">
-    <p>neatlogs traces for this run, one per attempt:</p>
-    <ol>
-      {% for trace in report.traces %}
-      <li><code>{{ trace.trace_id }}</code>, {{ trace.outcome or "running" }}{% if trace.reason %}: {{ trace.reason }}{% endif %}</li>
-      {% endfor %}
-    </ol>
+<header class="page-head">
+  <div>
+    <p class="kicker"><cite>{{ filing.case_name }}</cite>, No. {{ filing.docket_number }} ({{ court_cite(filing.court) }}), ECF {{ filing.entry_number }}: {{ filing.description }}</p>
+    <h1>{{ report.headline }}</h1>
+    <p>
+      Run {{ run.id }} on commit <code>{{ run.version }}</code>, {{ run.status }}{% if run.status_reason %} ({{ run.status_reason }}){% endif %}.
+      {% set incomplete = report.status_counts.get("Incomplete", 0) %}
+      {% if incomplete %}{{ incomplete }} citation{{ "s are" if incomplete != 1 else " is" }} missing a check this run didn't include.{% endif %}
+      {% if report.pincite_flags %}{{ report.pincite_flags }} pincite{{ "s point" if report.pincite_flags != 1 else " points" }} past the opinion's pages.{% endif %}
+    </p>
   </div>
-  {% endif %}
+</header>
 
-  <dl class="tally">
-    {% for status, count in report.status_counts.items() %}
-    <div class="s-{{ status | status_slug }}"><dt>{{ status }}</dt><dd>{{ count }}</dd></div>
-    {% endfor %}
-  </dl>
+{% if report.citations %}
+<section class="verdict" aria-label="Every citation in filing order">
+  {{ strip(report, here) }}
+  <p class="strip-note">One bar per citation, in filing order. Short bars sit inside a passage the filing quotes from another case.</p>
+  {{ tally(report) }}
 </section>
 
-<section class="authorities" aria-labelledby="authorities-heading">
-  <h2 id="authorities-heading">Citations</h2>
-  {% for c in report.citations %}
-  <details class="cite s-{{ c.status | status_slug }}" id="c{{ c.ordinal }}">
-    <summary>
-      <span class="ordinal">{{ c.ordinal }}</span>
-      <span class="authority">
+<div class="split">
+  <section class="cite-ledger" aria-labelledby="ledger-heading">
+    <h2 id="ledger-heading" class="sr-only">Citations</h2>
+    <div class="cite-ledger-head" aria-hidden="true">
+      <span>#</span><span>Checks</span><span>Case as cited</span><span>Status</span>
+    </div>
+    {% for c in report.citations %}
+    <a class="cite-row s-{{ c.status | status_slug }}" id="c{{ c.ordinal }}" href="{{ here }}?c={{ c.ordinal }}#inspector"{% if selected and c.ordinal == selected.ordinal %} aria-current="true"{% endif %}>
+      <span class="ord">{{ c.ordinal }}</span>
+      <span class="railcell">{{ rail(c) }}</span>
+      <span class="who">
         <cite>{{ c.case_name or "Short citation with no full cite to match" }}</cite>
-        <span class="as-cited">{{ c.cite_text }}</span>
+        <span>{{ c | cite_without_name if c.case_name else c.cite_text }}</span>
       </span>
-      <span class="verdict">
-        {{ c.status }}
-        {% if c.pincite_flag %}<span class="flag">Pincite off</span>{% endif %}
+      <span class="state">
+        <span class="tag">{{ c.status }}</span>
+        {% if c.pincite_flag %}<span class="tag tag-flag">Pincite off</span>{% endif %}
       </span>
-    </summary>
-    <div class="evidence">
-      <figure class="filing-text">
-        <figcaption>The filing says</figcaption>
-        <blockquote>{{ c.proposition }}</blockquote>
-        {% if c.in_quotation %}<p class="aside">This citation sits inside a passage the filing presents as a quotation from another case.</p>{% endif %}
-      </figure>
-      {% for quote in c.quotes %}
-      <figure class="filing-text">
-        <figcaption>Quoted as this case's words</figcaption>
-        <blockquote>{{ quote }}</blockquote>
-      </figure>
-      {% endfor %}
-      <ul class="checks">
+    </a>
+    {% endfor %}
+    <p class="ledger-key">
+      The line runs through the five checks in order: the case exists, the cite points to it, the quotation is in
+      the opinion, the opinion supports the statement, the pincite is inside the opinion. It stops at the first check
+      that fails. A dashed line means a source couldn't answer.
+    </p>
+  </section>
+
+  {% if selected %}
+  {% set c = selected %}
+  <aside class="inspector s-{{ c.status | status_slug }}" id="inspector" aria-label="Evidence for citation {{ c.ordinal }}">
+    <div class="insp-top">
+      <span class="tag">{{ c.status }}</span>
+      {% if c.pincite_flag %}<span class="tag tag-flag">Pincite off</span>{% endif %}
+      <span class="insp-ord">Citation {{ c.ordinal }} of {{ report.citations | length }}</span>
+    </div>
+    <h3><cite>{{ c.case_name or "Short citation with no full cite to match" }}</cite></h3>
+    <p class="as-cited">{{ c.cite_text }}</p>
+    <div class="insp-rail">{{ rail(c, "lg") }}</div>
+
+    <div class="insp-section">
+      <p class="insp-label">The filing says</p>
+      <blockquote class="insp-quote filing">{{ c.proposition }}</blockquote>
+      {% if c.in_quotation %}<p class="aside">This citation sits inside a passage the filing presents as a quotation from another case.</p>{% endif %}
+    </div>
+    {% for quote in c.quotes %}
+    <div class="insp-section">
+      <p class="insp-label">Quoted as this case's words</p>
+      <blockquote class="insp-quote">{{ quote }}</blockquote>
+    </div>
+    {% endfor %}
+
+    <div class="insp-section">
+      <p class="insp-label">What each check found</p>
+      <ul class="check-list">
         {% for name in CHECKS %}
         {% set result = c.checks.get(name) %}
         <li class="o-{{ result.outcome if result else 'pending' }}">
-          <span class="check-name">{{ CHECK_LABELS[name] }}</span>
-          <span class="outcome">{{ OUTCOME_LABELS[result.outcome] if result else "Not run" }}</span>
-          {% if result %}<p class="reason">{{ result.reason | sentence }}</p>{% endif %}
+          <span class="check-top"><b>{{ CHECK_LABELS[name] }}</b><span class="answer">{{ OUTCOME_LABELS[result.outcome] if result else "Not run" }}</span></span>
+          {% if result %}<p>{{ result.reason | sentence }}</p>{% endif %}
           {% if name == "quotation" and result and result.evidence.passages %}
           {% for match in result.evidence.passages %}
           <p class="excerpt">Closest opinion text{% if match.page %}, page {{ match.page }}{% endif %} ({{ match.score | round | int }}% match): <q>{{ match.excerpt }}</q></p>
@@ -99,9 +115,26 @@
         </li>
         {% endfor %}
       </ul>
-      {% if c.opinion_url %}<p class="source"><a href="{{ c.opinion_url }}">Read the opinion on CourtListener</a></p>{% endif %}
     </div>
-  </details>
-  {% endfor %}
+    {% if c.opinion_url %}<a class="insp-link" href="{{ c.opinion_url }}">Read the opinion on CourtListener</a>{% endif %}
+
+    {% if report.traces %}
+    <div class="side-card">
+      <h4>neatlogs traces for this run, one per attempt</h4>
+      <ol>
+        {% for trace in report.traces %}
+        <li><code>{{ trace.trace_id }}</code>, {{ trace.outcome or "running" }}{% if trace.reason %}: {{ trace.reason }}{% endif %}</li>
+        {% endfor %}
+      </ol>
+    </div>
+    {% endif %}
+  </aside>
+  {% endif %}
+</div>
+{% else %}
+<section class="verdict empty-state">
+  <p>Gainsay found no case citations in this filing, so there was nothing to check.</p>
+  {% if report.traces %}<p class="meta">neatlogs trace: <code>{{ report.traces[0].trace_id }}</code></p>{% endif %}
 </section>
+{% endif %}
 {% endblock %}

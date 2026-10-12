@@ -1,56 +1,68 @@
-{% extends "base.html" %}
+{% extends "app.html" %}
+{% from "_macros.html" import strip %}
 {% set section = "docket" %}
 {% block title %}{{ docket.name }} docket | Gainsay{% endblock %}
+{% block crumbs %}
+<span aria-current="page">Docket</span><span class="sep" aria-hidden="true">/</span>
+<span><cite>{{ docket.name }}</cite></span>
+{% endblock %}
 {% block content %}
-<section class="docket-head">
-  <p class="docket"><cite>{{ docket.name }}</cite>, No. {{ docket.docket_number }} ({{ court_cite(docket.court) }})</p>
-  <h1>{{ docket.checked | length }} filings checked, {{ docket.citations_checked }} citations</h1>
-  <p class="run-line">
-    {{ docket.entries | length }} docket entries seen. {{ docket.opposing | length }} were filed by the other side and are checked as they appear;
-    the rest are court orders and the client's own papers. {{ docket.citations_flagged }} citations have a problem in the latest run of each filing.
-  </p>
-  {% if budget %}
-  <p class="budget">
-    CourtListener budget: {{ budget.day_used }} of {{ budget.day_cap }} calls used in the last 24 hours, {{ budget.hour_used }} of {{ budget.hour_cap }} in the last hour.
+<header class="page-head">
+  <div>
+    <p class="kicker">No. {{ docket.docket_number }} ({{ court_cite(docket.court) }})</p>
+    <h1><cite>{{ docket.name }}</cite></h1>
+    <p>
+      Gainsay checks what the other side files on this docket and checks only filings it hasn't seen. Court orders
+      and the client's own papers are seen and skipped. The control is a defense filing checked to measure false alarms.
+    </p>
+  </div>
+</header>
+
+<dl class="metrics">
+  <div><dt>Docket entries seen</dt><dd>{{ docket.entries | length }}</dd></div>
+  <div><dt>Filed by the other side</dt><dd>{{ docket.opposing | length }}</dd></div>
+  <div><dt>Filings checked</dt><dd>{{ docket.checked | length }}</dd></div>
+  <div><dt>Citations with a problem</dt><dd>{{ docket.citations_flagged }}<small> of {{ docket.citations_checked }}</small></dd></div>
+</dl>
+
+{% if budget %}
+<section class="notice{% if budget.day_used >= budget.day_cap %} warn{% endif %}">
+  <span class="dot" aria-hidden="true"></span>
+  <p>
+    CourtListener budget: <strong>{{ budget.day_used }} of {{ budget.day_cap }}</strong> calls used in the last 24 hours,
+    {{ budget.hour_used }} of {{ budget.hour_cap }} in the last hour.
     {% if budget.day_used >= budget.day_cap and budget.next_free %}Paused until {{ budget.next_free }}, when the oldest calls age out.{% endif %}
   </p>
-  {% endif %}
 </section>
+{% endif %}
 
-<section aria-labelledby="checked-heading">
-  <h2 id="checked-heading" class="section-title">Checked filings</h2>
-  <ol class="filings">
-    {% for entry in docket.checked %}
-    {% set report = entry.report %}
-    <li class="filing-row">
-      <div class="filing-id">
-        <span class="ecf">ECF {{ entry.entry_number }}</span>
-        <span class="filed">{{ entry.date_filed }}</span>
-        <span class="role role-{{ entry.role | replace(' ', '-') }}">{{ entry.role | capitalize }}</span>
-      </div>
-      <div class="filing-body">
-        <a class="filing-title" href="/runs/{{ report.run.id }}">{{ entry.summary }}</a>
-        <p class="filing-result">{{ report.headline }} Run {{ report.run.id }}, {{ report.run.status }}.</p>
-        {% if report.citations %}
-        <ol class="strip mini" aria-label="ECF {{ entry.entry_number }} citations in filing order">
-          {% for c in report.citations %}
-          <li class="seg s-{{ c.status | status_slug }}{% if c.in_quotation %} nested{% endif %}">
-            <a href="/runs/{{ report.run.id }}#c{{ c.ordinal }}"><span class="sr-only">{{ c.ordinal }}. {{ c.case_name or "Unresolved citation" }}: {{ c.status }}</span></a>
-          </li>
-          {% endfor %}
-        </ol>
-        {% endif %}
-      </div>
-    </li>
-    {% endfor %}
-  </ol>
+<section class="queue" aria-labelledby="queue-heading">
+  <h2 id="queue-heading" class="sr-only">Checked filings</h2>
+  <div class="queue-head" aria-hidden="true"><span>Entry</span><span>Filing and latest result</span><span>Filed by</span></div>
+  {% for entry in docket.checked %}
+  {% set report = entry.report %}
+  <article class="queue-row">
+    <div>
+      <span class="ecf">ECF {{ entry.entry_number }}</span>
+      <span class="filed">{{ entry.date_filed }}</span>
+    </div>
+    <div class="queue-body">
+      <a class="title" href="/runs/{{ report.run.id }}">{{ entry.summary }}</a>
+      <span class="result">{{ report.headline }} Run {{ report.run.id }}, {{ report.run.status }}.</span>
+      {% if report.citations %}{{ strip(report, "/runs/" ~ report.run.id, "mini") }}{% endif %}
+    </div>
+    <div class="right">
+      <span class="tag role-{{ entry.role | replace(' ', '-') }}">{{ entry.role | capitalize }}</span>
+    </div>
+  </article>
+  {% endfor %}
 </section>
 
 <details class="others">
   <summary>{{ docket.entries | length - docket.checked | length }} other docket entries, not checked</summary>
   <ul>
     {% for entry in docket.entries if not entry.report %}
-    <li><span class="ecf">ECF {{ entry.entry_number }}</span> {{ entry.summary }}</li>
+    <li><span class="ecf">ECF {{ entry.entry_number }}</span><span>{{ entry.summary }}</span></li>
     {% endfor %}
   </ul>
 </details>

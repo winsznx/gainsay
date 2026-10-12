@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import mark %}
+{% block body_class %}site-body{% endblock %}
+{% block body %}
+<div class="site">
+  <header class="site-nav">
+    <a class="logo" href="/">{{ mark() }}<span>GAINSAY</span></a>
+    <nav class="site-links" aria-label="Sections">
+      <a href="#checks">How it checks</a>
+      <a href="#court">Scored against the court</a>
+      <a href="#measured">Benchmark</a>
+    </nav>
+    <div class="site-actions">
+      <a href="/runs">Runs</a>
+      <a class="btn btn-dark btn-small" href="/docket">Open the docket</a>
+    </div>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer">
+    <p>Gainsay reports what free public sources show about a citation, not legal conclusions.</p>
+    <p>Built for #neatHack, October 2026.</p>
+  </footer>
+</div>
+{% endblock %}

@@ -1,11 +1,18 @@
-{% extends "base.html" %}
+{% extends "app.html" %}
+{% from "_macros.html" import strip %}
 {% set section = "runs" %}
 {% block title %}Check runs | Gainsay{% endblock %}
+{% block crumbs %}<span aria-current="page">Runs</span>{% endblock %}
 {% block content %}
-<section class="runs">
-  <h1>Check runs</h1>
-  {% if rows %}
-  <table>
+<header class="page-head">
+  <div>
+    <h1>Check runs</h1>
+    <p>Every run the ledger holds, newest first. A paused run waits for the CourtListener quota and resumes where it stopped.</p>
+  </div>
+</header>
+{% if rows %}
+<div class="ledger-panel">
+  <table class="runs-table">
     <thead>
       <tr>
         <th scope="col">Run</th>
@@ -18,20 +25,21 @@
     <tbody>
       {% for run, report in rows %}
       <tr>
-        <td><a href="/runs/{{ run.id }}">Run {{ run.id }}</a></td>
+        <td><a class="runlink" href="/runs/{{ run.id }}">Run {{ run.id }}</a></td>
         <td><cite>{{ run.case_name }}</cite>, ECF {{ run.entry_number }}</td>
-        <td>
-          {% if run.status == "complete" %}{{ report.headline }}
-          {% else %}{{ run.status | capitalize }}{% if run.status_reason %}: {{ run.status_reason }}{% endif %}{% endif %}
+        <td class="result-cell">
+          {% if run.status == "complete" %}<span>{{ report.headline }}</span>
+          {% else %}<span class="tag tag-neutral">{{ run.status | capitalize }}</span>{% if run.status_reason %} <span class="reason">{{ run.status_reason }}</span>{% endif %}{% endif %}
+          {% if report.citations %}{{ strip(report, "/runs/" ~ run.id, "mini") }}{% endif %}
         </td>
-        <td><code>{{ run.version }}</code></td>
-        <td><time datetime="{{ run.started_at }}">{{ run.started_at[:16] | replace("T", " ") }} UTC</time></td>
+        <td class="mono">{{ run.version }}</td>
+        <td class="mono"><time datetime="{{ run.started_at }}">{{ run.started_at[:16] | replace("T", " ") }} UTC</time></td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-  {% else %}
-  <p class="empty">No runs yet. Fetch a filing, extract its citations, then run <code>scripts/check_citations.py</code>.</p>
-  {% endif %}
-</section>
+</div>
+{% else %}
+<p class="empty">No runs yet. Fetch a filing, extract its citations, then run <code>scripts/check_citations.py</code>.</p>
+{% endif %}
 {% endblock %}

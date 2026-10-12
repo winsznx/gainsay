@@ -19,10 +19,14 @@ def test_run_page_shows_status_flag_and_evidence(tmp_path):
     assert "1 of 3 citations has a problem." in html
     assert "Not found in searched sources" in html
     assert "Pincite off" in html
-    assert "No case named Zicherman" in html
-    assert "https://www.courtlistener.com/opinion/107720/kaiser-steel/" in html
+    assert "No case named Zicherman" in html, "the inspector opens on the first citation with a problem"
     for word in ("fake", "fabricated", "hallucinated"):
         assert word not in html.lower()
+
+    kaiser = client.get(f"/runs/{run_id}?c=2").text
+    assert "https://www.courtlistener.com/opinion/107720/kaiser-steel/" in kaiser
+    assert "Pincite reason" in kaiser
+    assert "No case named Zicherman" in client.get(f"/runs/{run_id}?c=99").text
 
 
 def test_runs_page_and_missing_run(tmp_path):

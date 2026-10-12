@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import mark %}
+{% block body_class %}app-body{% endblock %}
+{% block body %}
+{% set section = section | default("") %}
+<div class="shell">
+  <aside class="rail-nav">
+    <div>
+      <a class="logo" href="/">{{ mark() }}<span>GAINSAY</span></a>
+      <a class="workspace-card" href="/docket">
+        <span class="avatar" aria-hidden="true">M</span>
+        <span>
+          <strong>{{ DOCKET.name }}</strong>
+          <span>No. {{ DOCKET.docket_number }} ({{ court_cite(DOCKET.court) }})</span>
+        </span>
+      </a>
+      <nav class="rail-links" aria-label="Main">
+        <a href="/docket"{% if section == "docket" %} aria-current="page"{% endif %}>
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="2.5" y="3" width="13" height="12" rx="2.5"/><path d="M2.5 7h13M6 10.5h6"/></svg>
+          Docket
+        </a>
+        <a href="/runs"{% if section == "runs" %} aria-current="page"{% endif %}>
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 5h12M3 9h12M3 13h7"/></svg>
+          Runs
+        </a>
+        <a href="/">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M3 8l6-5 6 5v6.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>
+          Overview
+        </a>
+      </nav>
+      {% set scored = scored_run_id() %}
+      {% if scored %}
+      <div class="rail-action"><a class="btn btn-dark" href="/runs/{{ scored }}">Open the scored run</a></div>
+      {% endif %}
+    </div>
+    <div>
+      <div class="help-card">
+        <strong>Evidence decides every finding</strong>
+        <p>Each check stores its reason and the source response it rests on. A status says what free public sources show, nothing more.</p>
+        <a href="/#checks">How the checks work</a>
+      </div>
+      <p class="rail-foot">{% if READ_ONLY %}Read-only snapshot of the ledger. Checks run where the keys and quota live.{% else %}Live ledger on this machine.{% endif %}</p>
+    </div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <nav class="crumbs" aria-label="Breadcrumb">
+        {% block crumbs %}{% endblock %}
+      </nav>
+      <div class="topbar-end">{% block topbar_end %}{% endblock %}</div>
+    </header>
+    <main class="page">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}

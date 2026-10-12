@@ -1,0 +1,38 @@
+{#- The check rail: one line through the five checks in order. It is drawn in the
+    citation's status color and stops at the first check that sets the status.
+    A pincite failure is a flag, so the line runs past it. -#}
+{% macro rail(c, size="") -%}
+{%- set ns = namespace(stopped=false) -%}
+<span class="rail{% if size %} rail-{{ size }}{% endif %} s-{{ c.status | status_slug }}" role="img" aria-label="{% for name in CHECKS %}{% set r = c.checks.get(name) %}{{ CHECK_LABELS[name] }}: {{ OUTCOME_LABELS[r.outcome] if r else 'not run' }}{{ '. ' if not loop.last else '.' }}{% endfor %}">
+  {%- for name in CHECKS -%}
+  {%- set r = c.checks.get(name) -%}
+  <i class="n n-{{ name }} o-{{ r.outcome if r else 'pending' }}{% if ns.stopped %} past{% endif %}" title="{{ CHECK_LABELS[name] }}: {{ OUTCOME_LABELS[r.outcome] if r else 'Not run' }}"></i>
+  {%- if r and r.outcome == "fail" and name in STATUS_SET_BY %}{% set ns.stopped = true %}{% endif -%}
+  {%- endfor -%}
+</span>
+{%- endmacro %}
+
+{% macro strip(report, href, size="") -%}
+<ol class="strip{% if size %} strip-{{ size }}{% endif %}" aria-label="Citations in the order the filing makes them">
+  {%- for c in report.citations %}
+  <li class="seg s-{{ c.status | status_slug }}{% if c.in_quotation %} nested{% endif %}"><a href="{{ href }}?c={{ c.ordinal }}#inspector"><span class="sr-only">{{ c.ordinal }}. {{ c.case_name or "Unresolved citation" }}: {{ c.status }}</span></a></li>
+  {%- endfor %}
+</ol>
+{%- endmacro %}
+
+{% macro tally(report) -%}
+<dl class="tally">
+  {%- for status, count in report.status_counts.items() %}
+  <div class="s-{{ status | status_slug }}"><dt>{{ status }}</dt><dd>{{ count }}</dd></div>
+  {%- endfor %}
+</dl>
+{%- endmacro %}
+
+{% macro mark(size=26) -%}
+<svg class="mark" width="{{ size }}" height="{{ size }}" viewBox="0 0 26 26" aria-hidden="true">
+  <rect width="26" height="26" rx="8" fill="#101114"/>
+  <path d="M5 13h9" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="5" cy="13" r="2" fill="#fff"/>
+  <rect x="15" y="10" width="6" height="6" rx="1.2" fill="#d93b3b"/>
+</svg>
+{%- endmacro %}

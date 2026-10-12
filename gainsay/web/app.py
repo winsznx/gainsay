@@ -19,10 +19,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from gainsay.checker import CHECKS
+from gainsay.courtlistener import BACKOFF_SECONDS, DAY, HOUR, MAX_RETRIES, MINUTE
+from gainsay.dockets import load_docket_config
 from gainsay.export import render_markdown
 from gainsay.overview import budget_status, docket_overview, held_out_benchmark, latest_mata_score
 from gainsay.ledger import DEFAULT_LEDGER_PATH, connect
-from gainsay.report import list_runs, load_run
+from gainsay.report import PROBLEM_STATUSES, CitationReport, RunReport, list_runs, load_run
+from gainsay.status import DOESNT_SUPPORT, NOT_FOUND, QUOTE_NOT_IN_OPINION, WRONG_CASE
 
 HERE = Path(__file__).resolve().parent
 
@@ -39,6 +42,12 @@ OUTCOME_LABELS = {
     "unverifiable": "Can't tell",
     "not_applicable": "Not applicable",
 }
+STATUS_SET_BY = {
+    "existence": NOT_FOUND,
+    "identity": WRONG_CASE,
+    "quotation": QUOTE_NOT_IN_OPINION,
+    "proposition": DOESNT_SUPPORT,
+}
 _COURT_CITES = {court["id"]: court.get("citation_string") for court in courts}
 
 
@@ -48,6 +57,13 @@ def status_slug(status: str) -> str:
 
 def sentence(text: str) -> str:
     return text[:1].upper() + text[1:]
+
+
+def cite_without_name(citation: CitationReport) -> str:
+    text = citation.cite_text
+    if citation.case_name and text.startswith(citation.case_name):
+        text = text[len(citation.case_name):]
+    return text.lstrip(" ,.")
 
 
 FINDINGS = {
@@ -60,18 +76,43 @@ FINDINGS = {
 }
 
 
+def first_of_each_status(report: RunReport) -> list[CitationReport]:
+    """One citation per status, in status order, to show what each status looks like."""
+    firsts: dict[str, CitationReport] = {}
+    for citation in report.citations:
+        firsts.setdefault(citation.status, citation)
+    return [firsts[status] for status in report.status_counts]
+
+
+def selected_citation(report: RunReport, ordinal: int | None) -> CitationReport | None:
+    """The citation the inspector shows: the one asked for, else the first with a problem."""
+    for citation in report.citations:
+        if citation.ordinal == ordinal:
+            return citation
+    problems = (c for c in report.citations if c.status in PROBLEM_STATUSES)
+    return next(problems, report.citations[0] if report.citations else None)
+
+
 def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False) -> FastAPI:
     app = FastAPI(title="Gainsay", docs_url=None, redoc_url=None)
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
     templates = Jinja2Templates(directory=HERE / "templates")
     templates.env.filters["status_slug"] = status_slug
     templates.env.filters["sentence"] = sentence
+    templates.env.filters["cite_without_name"] = cite_without_name
     templates.env.globals.update(
         CHECKS=CHECKS,
         CHECK_LABELS=CHECK_LABELS,
         OUTCOME_LABELS=OUTCOME_LABELS,
+        STATUS_SET_BY=STATUS_SET_BY,
+        LIMITS=(MINUTE, HOUR, DAY),
+        MAX_RETRIES=MAX_RETRIES,
+        BACKOFF_SECONDS=BACKOFF_SECONDS,
         court_cite=lambda court_id: _COURT_CITES.get(court_id) or court_id,
         FINDINGS=FINDINGS,
+        DOCKET=load_docket_config(),
+        READ_ONLY=read_only,
+        scored_run_id=lambda: (latest_mata_score() or {}).get("run_id"),
     )
 
     def ledger() -> sqlite3.Connection:
@@ -84,6 +125,7 @@ def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False)
         specimen = load_run(conn, score["run_id"]) if score else None
         return templates.TemplateResponse(request, "landing.html", {
             "specimen": specimen,
+            "exemplars": first_of_each_status(specimen) if specimen else [],
             "score": score if specimen else None,
             "docket": docket_overview(conn),
             "benchmark": held_out_benchmark(),
@@ -104,11 +146,14 @@ def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False)
         return templates.TemplateResponse(request, "runs.html", {"rows": rows})
 
     @app.get("/runs/{run_id}", response_class=HTMLResponse)
-    def run(request: Request, run_id: int):
+    def run(request: Request, run_id: int, c: int | None = None):
         report = load_run(ledger(), run_id)
         if report is None:
             raise HTTPException(status_code=404, detail=f"No run {run_id} in the ledger")
-        return templates.TemplateResponse(request, "run.html", {"report": report})
+        return templates.TemplateResponse(request, "run.html", {
+            "report": report,
+            "selected": selected_citation(report, c),
+        })
 
     @app.get("/runs/{run_id}/report.md", response_class=PlainTextResponse)
     def run_report(run_id: int):
