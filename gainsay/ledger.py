@@ -71,6 +71,15 @@ CREATE TABLE IF NOT EXISTS runs (
     finished_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS run_progress (
+    run_id INTEGER PRIMARY KEY REFERENCES runs(id) ON DELETE CASCADE,
+    narration TEXT NOT NULL,
+    next_actions TEXT NOT NULL,
+    queued INTEGER NOT NULL,
+    waiting_until TEXT,
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS run_traces (
     run_id INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
     trace_id TEXT NOT NULL PRIMARY KEY,
@@ -224,6 +233,25 @@ def finish_run(conn: sqlite3.Connection, run_id: int, status: str, reason: str |
         conn.execute(
             "UPDATE runs SET status = ?, status_reason = ?, finished_at = ? WHERE id = ?",
             (status, reason, now(), run_id),
+        )
+
+
+def set_progress(
+    conn: sqlite3.Connection,
+    run_id: int,
+    narration: str,
+    next_actions: list[str],
+    queued: int,
+    waiting_until: str | None = None,
+) -> None:
+    """What the run just did, what it does next, and when it can continue if it's waiting."""
+    with conn:
+        conn.execute(
+            "INSERT INTO run_progress (run_id, narration, next_actions, queued, waiting_until, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (run_id) DO UPDATE SET narration = excluded.narration, "
+            "next_actions = excluded.next_actions, queued = excluded.queued, "
+            "waiting_until = excluded.waiting_until, updated_at = excluded.updated_at",
+            (run_id, narration, json.dumps(next_actions), queued, waiting_until, now()),
         )
 
 

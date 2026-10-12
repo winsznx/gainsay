@@ -8,6 +8,7 @@ import json
 import sqlite3
 from collections import Counter
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 from gainsay.status import (
@@ -70,6 +71,11 @@ class RunReport:
     filing: dict[str, Any]
     citations: list[CitationReport]
     traces: list[dict[str, Any]] = field(default_factory=list)
+    progress: dict[str, Any] | None = None
+
+    @property
+    def active(self) -> bool:
+        return self.run.get("status") in ("running", "paused")
 
     @property
     def status_counts(self) -> dict[str, int]:
@@ -142,4 +148,17 @@ def load_run(conn: sqlite3.Connection, run_id: int) -> RunReport | None:
             "SELECT * FROM run_traces WHERE run_id = ? ORDER BY started_at", (run_id,)
         )
     ]
-    return RunReport(dict(run), filing_fields, list(citations.values()), traces)
+    return RunReport(dict(run), filing_fields, list(citations.values()), traces, _progress(conn, run_id))
+
+
+def _progress(conn: sqlite3.Connection, run_id: int) -> dict[str, Any] | None:
+    row = conn.execute("SELECT * FROM run_progress WHERE run_id = ?", (run_id,)).fetchone()
+    if row is None:
+        return None
+    progress = dict(row)
+    progress["next_actions"] = json.loads(row["next_actions"])
+    wait = None
+    if row["waiting_until"]:
+        wait = max(0, int((datetime.fromisoformat(row["waiting_until"]) - datetime.now(UTC)).total_seconds()))
+    progress["wait_seconds"] = wait
+    return progress

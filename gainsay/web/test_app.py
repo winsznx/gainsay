@@ -30,3 +30,19 @@ def test_runs_page_and_missing_run(tmp_path):
     client = TestClient(create_app(tmp_path / "ledger.sqlite"))
     assert f"/runs/{run_id}" in client.get("/").text
     assert client.get("/runs/999").status_code == 404
+
+
+def test_active_run_shows_what_it_is_doing_and_refreshes(tmp_path):
+    from gainsay.ledger import connect, set_progress
+    _, run_id = make_run(tmp_path)
+    conn = connect(tmp_path / "ledger.sqlite")
+    set_progress(conn, run_id, "Varghese, 925 F.3d 1339: not found → Not found in searched sources. Next: Kaiser.",
+                 ["Kaiser Steel Corp., 391 U.S. 593"], 3, "2999-01-01T00:00:00+00:00")
+    conn.execute("UPDATE runs SET status = 'paused' WHERE id = ?", (run_id,))
+    conn.commit()
+
+    html = TestClient(create_app(tmp_path / "ledger.sqlite")).get(f"/runs/{run_id}").text
+    assert "Varghese, 925 F.3d 1339: not found" in html
+    assert "Next: Kaiser Steel Corp., 391 U.S. 593" in html
+    assert "quota refills in" in html and "3 citations queued" in html
+    assert 'http-equiv="refresh"' in html

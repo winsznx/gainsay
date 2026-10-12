@@ -2,7 +2,19 @@
 {% set filing = report.filing %}
 {% set run = report.run %}
 {% block title %}Run {{ run.id }}: {{ filing.case_name }} | Gainsay{% endblock %}
+{% block head %}{% if report.active %}<meta http-equiv="refresh" content="2">{% endif %}{% endblock %}
 {% block content %}
+{% if report.progress %}
+<section class="now{% if report.active %} live{% endif %}" aria-live="polite">
+  <p class="now-line">{{ report.progress.narration }}</p>
+  {% if report.progress.wait_seconds is not none and report.run.status == "paused" %}
+  <p class="now-wait">CourtListener quota refills in {{ report.progress.wait_seconds // 60 }}m {{ report.progress.wait_seconds % 60 }}s. {{ report.progress.queued }} citations queued.</p>
+  {% endif %}
+  {% if report.progress.next_actions %}
+  <p class="now-next">Next: {{ report.progress.next_actions | join("; ") }}</p>
+  {% endif %}
+</section>
+{% endif %}
 <section class="filing">
   <p class="docket">
     <cite>{{ filing.case_name }}</cite>, No. {{ filing.docket_number }} ({{ court_cite(filing.court) }}),

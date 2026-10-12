@@ -55,6 +55,19 @@ main {
   padding: 2.5rem clamp(1rem, 4vw, 3rem) 4rem;
 }
 
+/* What the agent is doing now */
+
+.now {
+  margin: 0 0 2rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--sheet);
+  border-left: 5px solid var(--incomplete);
+}
+.now.live { border-left-color: var(--ink); }
+.now p { margin: 0; max-width: 52rem; }
+.now-line { font: 400 1.05rem/1.5 var(--serif); }
+.now-wait, .now-next { margin-top: 0.35rem !important; color: var(--muted); font-size: 0.9rem; }
+
 /* Filing summary */
 
 .docket { margin: 0 0 0.75rem; color: var(--muted); max-width: 48rem; }

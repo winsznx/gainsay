@@ -13,6 +13,7 @@ import json
 import os
 import sqlite3
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 import anthropic
 
@@ -20,7 +21,16 @@ from gainsay.cache import CachedCourtListener
 from gainsay.checker import CHECKS, Checker
 from gainsay.courtlistener import BudgetExhausted, CourtListenerError
 from gainsay.existence import Authority
-from gainsay.ledger import finish_run, record_finding, record_trace, recorded_checks, resume_run, start_run
+from gainsay.ledger import (
+    finish_run,
+    record_finding,
+    record_trace,
+    recorded_checks,
+    resume_run,
+    set_progress,
+    start_run,
+)
+from gainsay.narration import citation_label, narrate
 from gainsay.proposition import Judge
 from gainsay.tracing import Tracing
 
@@ -85,11 +95,19 @@ def run_checks(
             run_span.set_attribute("gainsay.resumed", resume_run_id is not None)
             run_span.set_attribute("gainsay.findings_already_recorded", len(done))
         checked = 0
+        authorities = load_authorities(conn, filing_id)
+        pending = [c for c in citations if not all((c["id"], check) in done for check in CHECKS)]
+        labels = {c["id"]: _label(c, authorities) for c in citations}
+        set_progress(
+            conn, run_id,
+            f"Starting: {len(pending)} of {len(citations)} citations still to check"
+            + (f", {len(citations) - len(pending)} already settled in the ledger" if len(pending) < len(citations) else ""),
+            [labels[c["id"]] for c in pending[:3]],
+            len(pending),
+        )
         try:
-            checker = Checker(api, load_authorities(conn, filing_id), citations, judge)
-            for citation in citations:
-                if all((citation["id"], check) in done for check in CHECKS):
-                    continue
+            checker = Checker(api, authorities, citations, judge)
+            for position, citation in enumerate(pending):
                 _maybe_fail(conn, run_id, trace_id, simulation, checked)
                 checked += 1
                 with tracing.span(
@@ -100,7 +118,8 @@ def run_checks(
                     citation=citation["ordinal"],
                     case_name=citation["case_name"] or "unresolved",
                 ) as span:
-                    for finding in checker.check(citation):
+                    findings_now = checker.check(citation)
+                    for finding in findings_now:
                         if (citation["id"], finding.check) in done:
                             continue
                         record_finding(
@@ -109,9 +128,31 @@ def run_checks(
                         )
                         if span is not None:
                             span.set_attribute(f"gainsay.{finding.check}", finding.outcome)
+                    rest = pending[position + 1 :]
+                    set_progress(
+                        conn, run_id,
+                        narrate(labels[citation["id"]], findings_now, labels[rest[0]["id"]] if rest else None),
+                        [labels[c["id"]] for c in rest[:3]],
+                        len(rest),
+                    )
         except (BudgetExhausted, anthropic.RateLimitError) as exc:
             result = RunResult(run_id, "paused", str(exc))
             _record_failure(run_span, exc)
+            queued = conn.execute(
+                "SELECT COUNT(*) FROM citations c WHERE c.filing_id = ? AND "
+                "(SELECT COUNT(*) FROM findings f WHERE f.run_id = ? AND f.citation_id = c.id) < ?",
+                (filing_id, run_id, len(CHECKS)),
+            ).fetchone()[0]
+            retry_after = getattr(exc, "retry_after", None)
+            waiting_until = (
+                (datetime.now(UTC) + timedelta(seconds=retry_after)).isoformat(timespec="seconds")
+                if retry_after else None
+            )
+            set_progress(
+                conn, run_id,
+                f"Paused: {exc}. {queued} citations queued; the next run resumes from the ledger.",
+                [], queued, waiting_until,
+            )
         except CourtListenerError as exc:
             result = RunResult(run_id, "failed", str(exc))
             _record_failure(run_span, exc)
@@ -139,6 +180,14 @@ def _maybe_fail(
         if trace_id:
             record_trace(conn, run_id, trace_id, "crashed", reason)
         os._exit(137)
+
+
+def _label(citation: sqlite3.Row, authorities: dict[int, Authority]) -> str:
+    authority = authorities.get(citation["authority_id"])
+    reporter = authority.reporter_cites[0] if authority and authority.reporter_cites else None
+    if citation["kind"] == "id":
+        reporter = citation["cite_text"]
+    return citation_label(citation["case_name"], reporter, citation["cite_text"])
 
 
 def _trace_id(span: object | None) -> str | None:
