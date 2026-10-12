@@ -77,3 +77,14 @@ def test_contractions_and_acronyms_match(cited, found):
 
 def test_acronym_must_spell_the_other_party():
     assert not names_match("Wyoming v. EPA", "Wyoming v. United States Department of Agriculture")
+
+
+@pytest.mark.parametrize(
+    ("cited", "found"),
+    [
+        ("Bell Atl. Corp. v. Twombly", "Bell Atlantic Corp. v. Twombly"),
+        ("Am. Gen. Life Ins. Co. v. Pac. Mut. Co.", "American General Life Insurance Co. v. Pacific Mutual Co."),
+    ],
+)
+def test_short_bluebook_abbreviations_match(cited, found):
+    assert names_match(cited, found)

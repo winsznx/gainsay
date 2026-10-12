@@ -32,6 +32,12 @@ _CONTRACTIONS = {
     "fin": "financial", "ins": "insurance", "mfg": "manufacturing", "prods": "products", "servs": "services",
     "sch": "school", "univ": "university", "ctr": "center", "dist": "district", "envtl": "environmental",
     "hous": "housing", "dev": "development", "econ": "economic", "wis": "wisconsin", "med": "medical",
+    "atl": "atlantic", "pac": "pacific", "am": "american", "gen": "general", "mut": "mutual",
+    "cent": "central", "cty": "county", "elec": "electric", "inv": "investment", "invs": "investments",
+    "mkt": "market", "pharm": "pharmaceutical", "bldg": "building", "assur": "assurance", "ent": "entertainment",
+    "indem": "indemnity", "transp": "transportation", "tech": "technology", "techs": "technologies",
+    "telecomm": "telecommunication", "telecomms": "telecommunications", "corr": "correctional",
+    "fed": "federal", "sav": "savings", "ry": "railway", "r.r": "railroad", "rr": "railroad",
 }
 _PARTY_COVERAGE = 0.6
 _SINGLE_PARTY_COVERAGE = 2 / 3
