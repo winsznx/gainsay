@@ -183,6 +183,11 @@ def check_proposition(
         return Finding(
             "proposition", UNVERIFIABLE, f"the model declined to judge ({response.get('stop_details')})", evidence
         )
+    if "no_verdict" in response:
+        return Finding(
+            "proposition", UNVERIFIABLE,
+            f"the model returned no verdict: {response['no_verdict']}; the next run asks again", evidence,
+        )
     verdict = response["verdict"]
     cited = [p for p in passages if p.id in verdict["passage_ids"]]
     pages = sorted({p.page for p in cited if p.page is not None})
@@ -232,7 +237,8 @@ class ClaudeJudge:
             return cached
         result = self._ask(request)
         self.calls += 1
-        self._store(key, request, result)
+        if "no_verdict" not in result:
+            self._store(key, request, result)
         return result
 
     def prefetch(self, prompts: list[tuple[str, str]], workers: int = 8) -> int:
@@ -247,8 +253,9 @@ class ClaudeJudge:
                 pending[key] = request
         with ThreadPoolExecutor(max_workers=workers) as pool:
             for key, result in zip(pending, pool.map(self._ask, pending.values())):
-                self._store(key, pending[key], result)
                 self.calls += 1
+                if "no_verdict" not in result:
+                    self._store(key, pending[key], result)
         return len(pending)
 
     def _request(self, system: str, user: str) -> tuple[dict[str, Any], str]:
@@ -274,9 +281,16 @@ class ClaudeJudge:
             "stop_details": message.stop_details.to_dict() if message.stop_details else None,
             "usage": {"input_tokens": message.usage.input_tokens, "output_tokens": message.usage.output_tokens},
         }
-        if message.stop_reason != "refusal":
-            text = next(block.text for block in message.content if block.type == "text")
+        if message.stop_reason == "refusal":
+            return result
+        text = "".join(block.text for block in message.content if block.type == "text")
+        if not text.strip():
+            result["no_verdict"] = f"an empty response (stop reason {message.stop_reason})"
+            return result
+        try:
             result["verdict"] = json.loads(text)
+        except json.JSONDecodeError:
+            result["no_verdict"] = f"output that isn't the verdict JSON (stop reason {message.stop_reason})"
         return result
 
     def _store(self, key: str, request: dict[str, Any], result: dict[str, Any]) -> None:

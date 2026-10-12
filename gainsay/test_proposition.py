@@ -65,18 +65,20 @@ def test_refusal_and_missing_opinion_are_unverifiable():
 
 
 class FakeMessages:
-    def __init__(self):
+    def __init__(self, text='{"verdict": "supports", "passage_ids": ["P1"], "reason": "r"}', stop_reason="end_turn"):
         self.requests = []
+        self.text = text
+        self.stop_reason = stop_reason
 
     def create(self, **kwargs):
         self.requests.append(kwargs)
         return SimpleNamespace(
             id="msg_1",
             model="claude-opus-5-5",
-            stop_reason="end_turn",
+            stop_reason=self.stop_reason,
             stop_details=None,
             usage=SimpleNamespace(input_tokens=10, output_tokens=5),
-            content=[SimpleNamespace(type="text", text='{"verdict": "supports", "passage_ids": ["P1"], "reason": "r"}')],
+            content=[SimpleNamespace(type="text", text=self.text)] if self.text is not None else [],
         )
 
 
@@ -124,3 +126,17 @@ def test_the_pincite_is_shown_to_the_judge():
     assert "<pincite>page 598</pincite>" in render_request("s", [], True, pin=(598, 598))
     assert "<pincite>page 371-72</pincite>" not in render_request("s", [], True, pin=(371, 372))
     assert "<pincite>page 371-372</pincite>" in render_request("s", [], True, pin=(371, 372))
+
+
+def test_an_empty_or_cut_off_answer_is_unverifiable_and_asked_again(tmp_path):
+    for text, stop_reason in ((None, "end_turn"), ("", "end_turn"), ('{"verdict": "supp', "max_tokens")):
+        messages = FakeMessages(text, stop_reason)
+        judge = ClaudeJudge(connect(tmp_path / f"ledger-{stop_reason}-{text!r:.4}.sqlite"), SimpleNamespace(beta=SimpleNamespace(messages=messages)))
+
+        finding = check_proposition("x", [SHORT], 593, None, judge)
+        judge("system", "user")
+        judge("system", "user")
+
+        assert finding.outcome == UNVERIFIABLE
+        assert "no verdict" in finding.reason and "next run asks again" in finding.reason
+        assert len(messages.requests) == 3
