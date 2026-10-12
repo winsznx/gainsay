@@ -87,7 +87,10 @@ _SIGNAL_BEFORE = re.compile(
     r"(?:,?\s+(?:also|generally|e\.g\.))?|[Ee]\.g\.)\s*,?\s*$"
 )
 _PIN_AFTER = re.compile(r"[\s,]*(?:(?:at\s+)?\*?\d[\d\s,\-–n.&*]*)?\s*")
-_COURT_YEAR_CONTENT = re.compile(r"^[^()]*\b\d{4}$")
+# A court and year, with a Texas writ or petition history after it ("1994, writ denied").
+_COURT_YEAR_CONTENT = re.compile(
+    r"^[^()]*\b\d{4}(?:,\s*(?:no\s+)?(?:writ|pet\.?|rev\.?)(?:\s+[\w.'’ ]+)?)?$", re.IGNORECASE
+)
 _BOILERPLATE = re.compile(
     r"^(?:(?:internal\s+)?(?:citations?|quotations?|quotation\s+marks|alterations?|footnotes?|emphasis)"
     r"(?:\s+and\s+\w+(?:\s+marks)?)?\s+(?:omitted|added|in\s+original|supplied)|quoting\b|citing\b|"

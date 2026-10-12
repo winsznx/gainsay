@@ -422,3 +422,13 @@ def test_a_case_cited_inside_a_parenthetical_does_not_take_the_quote_after_it():
     felsher, hartzler = extract(text).citations
     assert felsher.quotes == ["whether the name has come to denote the plaintiff's goods."]
     assert hartzler.quotes == []
+
+
+def test_a_texas_writ_history_is_part_of_the_court_parenthetical():
+    text = (
+        "Falsifying records is an illegal act. In Higginbotham v. Allwaste, Inc., 889 S.W.2d 411, 416 "
+        "(Tex. App.—Houston [14th Dist.] 1994, writ denied), the court held that falsifying testing records "
+        "could form the basis of a claim."
+    )
+    (higginbotham,) = extract(text).citations
+    assert higginbotham.parenthetical is None
