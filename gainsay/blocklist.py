@@ -1,8 +1,10 @@
 """Documents the agent must never fetch.
 
-The Mata v. Avianca sanctions opinion (ECF 54) names every bad citation in
-the case. Scored runs use it as the answer key, so letting the agent read it
-would leak the answers into the run.
+The Mata v. Avianca sanctions opinion (ECF 54) and the Gauthier v. Goodyear
+sanctions order (ECF 48) name every bad citation in their cases. Scored runs
+use them as answer keys, so letting the agent read them would leak the
+answers into the run. In Gauthier the show-cause order (ECF 44) and
+Goodyear's reply (ECF 42), which first named the bad cites, are blocked too.
 """
 
 import re
@@ -10,6 +12,9 @@ import re
 BLOCKLISTED_ENTRIES = frozenset(
     {
         ("nysd", "22-cv-1461", 54),
+        ("txed", "23-cv-281", 42),
+        ("txed", "23-cv-281", 44),
+        ("txed", "23-cv-281", 48),
     }
 )
 

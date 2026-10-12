@@ -1,0 +1,83 @@
+{
+  "source": {
+    "case": "Gauthier v. Goodyear Tire & Rubber Co., No. 1:23-cv-00281 (E.D. Tex.)",
+    "docket_id": 67624744,
+    "entry_number": 48,
+    "title": "Memorandum and Order, November 25, 2024"
+  },
+  "scored_filing": {
+    "docket_id": 67624744,
+    "entry_number": 41
+  },
+  "court_findings": {
+    "does_not_exist": "The court found the decision does not exist.",
+    "quote_not_in_opinion": "The decision exists but does not contain the language quoted from it."
+  },
+  "note": "Only the cases the order rules on are scored. The response also cites Anderson, Reeves, Sabine Pilot, Winters, Higginbotham and Safeshred, which the order doesn't mention, so they have no label.",
+  "cases": [
+    {
+      "case_name": "Roca v. King's Creek Plantation, LLC",
+      "cite": "500 F. App'x 273",
+      "exists": false,
+      "court_finding": "does_not_exist",
+      "where": "n.1",
+      "evidence": "The nonexistent cases are “Roca v. King’s Creek Plantation, LLC, 500 F. App’x 273, 276"
+    },
+    {
+      "case_name": "Beets v. Texas Instruments, Inc.",
+      "cite": "1994 WL 714026",
+      "exists": false,
+      "court_finding": "does_not_exist",
+      "where": "n.1",
+      "evidence": "“Beets v. Texas Instruments, Inc., No. 94-10034, 1994 WL 714026, at *3"
+    },
+    {
+      "case_name": "Morales v. SimuFlite Training Int'l, Inc.",
+      "cite": "132 S.W.3d 603",
+      "exists": true,
+      "court_finding": "quote_not_in_opinion",
+      "where": "n.2",
+      "evidence": "The Response cites nonexistent quotations from the following cases: Morales v. SimuFlite Training Int’l, Inc., 132 S.W.3d 603"
+    },
+    {
+      "case_name": "White v. FCI USA, Inc.",
+      "cite": "319 F.3d 672",
+      "exists": true,
+      "court_finding": "quote_not_in_opinion",
+      "where": "n.2",
+      "evidence": "White v. FCI USA, Inc., 319 F.3d 672 (5th Cir. 2003)"
+    },
+    {
+      "case_name": "Burton v. Freescale Semiconductor, Inc.",
+      "cite": "798 F.3d 222",
+      "exists": true,
+      "court_finding": "quote_not_in_opinion",
+      "where": "n.2",
+      "evidence": "Burton v. Freescale Semiconductor, Inc., 798 F.3d 222 (5th Cir. 2015)"
+    },
+    {
+      "case_name": "Texas Dep't of Human Servs. v. Hinds",
+      "cite": "904 S.W.2d 629",
+      "exists": true,
+      "court_finding": "quote_not_in_opinion",
+      "where": "n.2",
+      "evidence": "Texas Dep't of Human Servs. v. Hinds, 904 S.W.2d 629 (Tex. 1995)"
+    },
+    {
+      "case_name": "Physio GP, Inc. v. Naifeh",
+      "cite": "306 S.W.3d 886",
+      "exists": true,
+      "court_finding": "quote_not_in_opinion",
+      "where": "n.2",
+      "evidence": "Physio GP, Inc. v. Naifeh, 306 S.W.3d 886 (Tex. App.—Houston [14th Dist.] 2010, no pet.)"
+    },
+    {
+      "case_name": "City of Midland v. O'Bryant",
+      "cite": "18 S.W.3d 209",
+      "exists": true,
+      "court_finding": "quote_not_in_opinion",
+      "where": "n.2",
+      "evidence": "City of Midland v. O’Bryant, 18 S.W.3d 209 (Tex. 2000)"
+    }
+  ]
+}

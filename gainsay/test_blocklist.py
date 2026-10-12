@@ -36,3 +36,12 @@ def test_allows_other_entries(court, docket_number, entry_number):
 def test_rejects_unparseable_docket_number():
     with pytest.raises(ValueError):
         normalize_docket_number("not a docket")
+
+
+def test_the_gauthier_rulings_are_blocked():
+    import pytest
+    from gainsay.blocklist import BlocklistedDocument, assert_not_blocklisted
+    for entry in (42, 44, 48):
+        with pytest.raises(BlocklistedDocument):
+            assert_not_blocklisted("txed", "1:23-cv-00281", entry)
+    assert_not_blocklisted("txed", "1:23-cv-00281", 41)
