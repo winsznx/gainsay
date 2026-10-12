@@ -9,11 +9,12 @@ from pathlib import Path
 
 from courts_db import courts
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from gainsay.checker import CHECKS
+from gainsay.export import render_markdown
 from gainsay.ledger import DEFAULT_LEDGER_PATH, connect
 from gainsay.report import list_runs, load_run
 
@@ -71,6 +72,17 @@ def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH) -> FastAPI:
         if report is None:
             raise HTTPException(status_code=404, detail=f"No run {run_id} in the ledger")
         return templates.TemplateResponse(request, "run.html", {"report": report})
+
+    @app.get("/runs/{run_id}/report.md", response_class=PlainTextResponse)
+    def run_report(run_id: int):
+        report = load_run(ledger(), run_id)
+        if report is None:
+            raise HTTPException(status_code=404, detail=f"No run {run_id} in the ledger")
+        return PlainTextResponse(
+            render_markdown(report),
+            media_type="text/markdown",
+            headers={"Content-Disposition": f'attachment; filename="gainsay-run-{run_id}.md"'},
+        )
 
     return app
 

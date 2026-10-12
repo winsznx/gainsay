@@ -46,3 +46,15 @@ def test_active_run_shows_what_it_is_doing_and_refreshes(tmp_path):
     assert "Next: Kaiser Steel Corp., 391 U.S. 593" in html
     assert "quota refills in" in html and "3 citations queued" in html
     assert 'http-equiv="refresh"' in html
+
+
+def test_report_downloads_as_markdown_with_sources_and_evidence(tmp_path):
+    _, run_id = make_run(tmp_path)
+    response = TestClient(create_app(tmp_path / "ledger.sqlite")).get(f"/runs/{run_id}/report.md")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/markdown")
+    body = response.text
+    assert body.startswith("# Gainsay report: Mata v. Avianca, Inc., ECF 21")
+    assert "Westlaw and Lexis are outside the sources searched" in body
+    assert "| existence | No | no case named Zicherman |" in body
+    assert "(pincite off)" in body

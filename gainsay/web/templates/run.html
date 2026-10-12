@@ -26,6 +26,7 @@
     {% set incomplete = report.status_counts.get("Incomplete", 0) %}
     {% if incomplete %}{{ incomplete }} citation{{ "s are" if incomplete != 1 else " is" }} missing a check this run didn't include.{% endif %}
     {% if report.pincite_flags %}{{ report.pincite_flags }} pincite{{ "s point" if report.pincite_flags != 1 else " points" }} past the opinion's pages.{% endif %}
+    <a href="/runs/{{ run.id }}/report.md">Download the report</a>
   </p>
 
   <ol class="strip" aria-label="Citations in the order the filing makes them">
