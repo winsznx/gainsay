@@ -18,6 +18,8 @@ from gainsay.report import PROBLEM_STATUSES, RunReport, load_run
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RESULTS_DIR = REPO_ROOT / "scoring" / "results"
+MATA_ANSWER_KEY = "scoring/mata_answer_key.json"
+GAUTHIER_ANSWER_KEY = "scoring/gauthier_answer_key.json"
 
 
 @dataclass
@@ -123,12 +125,11 @@ def budget_status(path: Path = DEFAULT_BUDGET_PATH, now: float | None = None) ->
     }
 
 
-def latest_mata_score(results: Path = RESULTS_DIR) -> dict[str, Any] | None:
-    """The highest-numbered stored run score against the Mata sanctions opinion."""
-    scored = sorted(
-        (int(m.group(1)), p) for p in results.glob("run-*-score.json") if (m := re.match(r"run-(\d+)-score", p.stem))
-    )
-    return json.loads(scored[-1][1].read_text()) if scored else None
+def latest_score(answer_key: str, results: Path = RESULTS_DIR) -> dict[str, Any] | None:
+    """The highest-numbered stored run score against one answer key, such as MATA_ANSWER_KEY."""
+    scores = [json.loads(p.read_text()) for p in results.glob("run-*-score.json")]
+    matching = [s for s in scores if s.get("answer_key") == answer_key]
+    return max(matching, key=lambda s: s["run_id"]) if matching else None
 
 
 def benchmark_result(results: Path = RESULTS_DIR) -> dict[str, Any] | None:

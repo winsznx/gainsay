@@ -178,6 +178,15 @@
     which free sources can't see, so Gainsay says "Unverifiable: outside free sources" instead of calling {{ "them" if missed != 1 else "it" }} missing.
   </p>
   {% endif %}
+  {% if second_score %}
+  {% set verified = second_score.cases | selectattr("case_status", "equalto", "Verified") | list | length %}
+  <p class="ledger-note">
+    A second sanctioned filing, <cite>Gauthier v. Goodyear</cite> (E.D. Tex.), scored against the court's 2024 order
+    (<a href="/runs/{{ second_score.run_id }}">run {{ second_score.run_id }}</a>): {{ second_score.summary.agree }} of
+    {{ second_score.cases | length }} statuses match the court, and {{ "none" if not verified else verified }} of the
+    {{ second_score.cases | length }} cases it faulted come back Verified.
+  </p>
+  {% endif %}
 </section>
 {% endif %}
 

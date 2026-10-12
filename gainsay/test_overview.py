@@ -1,6 +1,6 @@
 import json
 
-from gainsay.overview import benchmark_result
+from gainsay.overview import GAUTHIER_ANSWER_KEY, MATA_ANSWER_KEY, benchmark_result, latest_score
 
 
 def arms(*names):
@@ -54,3 +54,11 @@ def test_an_entrys_exhibits_are_listed_under_it(tmp_path):
     (exhibit,) = entry.exhibits
     assert (exhibit.attachment_number, exhibit.description) == (1, "Exhibit A")
     assert exhibit.report.run["id"] != entry.report.run["id"]
+
+
+def test_the_latest_score_is_the_newest_run_against_that_answer_key(tmp_path):
+    for run_id, key in [(9, MATA_ANSWER_KEY), (47, MATA_ANSWER_KEY), (50, GAUTHIER_ANSWER_KEY)]:
+        (tmp_path / f"run-{run_id}-score.json").write_text(json.dumps({"run_id": run_id, "answer_key": key}))
+    assert latest_score(MATA_ANSWER_KEY, tmp_path)["run_id"] == 47
+    assert latest_score(GAUTHIER_ANSWER_KEY, tmp_path)["run_id"] == 50
+    assert latest_score("scoring/other.json", tmp_path) is None

@@ -25,7 +25,9 @@ from gainsay.courtlistener import BACKOFF_SECONDS, DAY, HOUR, MAX_RETRIES, MINUT
 from gainsay.dockets import load_docket_config
 from gainsay.export import render_markdown
 from gainsay.filings import ecf_label
-from gainsay.overview import benchmark_result, budget_status, docket_overview, latest_mata_score
+from gainsay.overview import (
+    GAUTHIER_ANSWER_KEY, MATA_ANSWER_KEY, benchmark_result, budget_status, docket_overview, latest_score,
+)
 from gainsay.ledger import DEFAULT_LEDGER_PATH, connect
 from gainsay.report import PROBLEM_STATUSES, CitationReport, RunReport, list_runs, load_run
 from gainsay.status import DOESNT_SUPPORT, NOT_FOUND, QUOTE_NOT_IN_OPINION, WRONG_CASE
@@ -150,7 +152,7 @@ def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False)
         READ_ONLY=read_only,
         run_status=lambda run: shown_status(run["status"], read_only),
         ecf=lambda row: ecf_label(row["entry_number"], row.get("attachment_number")),
-        scored_run_id=lambda: (latest_mata_score() or {}).get("run_id"),
+        scored_run_id=lambda: (latest_score(MATA_ANSWER_KEY) or {}).get("run_id"),
     )
 
     def ledger() -> sqlite3.Connection:
@@ -159,12 +161,14 @@ def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False)
     @app.get("/", response_class=HTMLResponse)
     def landing(request: Request):
         conn = ledger()
-        score = latest_mata_score()
+        score = latest_score(MATA_ANSWER_KEY)
         specimen = load_run(conn, score["run_id"]) if score else None
+        second = latest_score(GAUTHIER_ANSWER_KEY)
         return templates.TemplateResponse(request, "landing.html", {
             "specimen": specimen,
             "exemplars": first_of_each_status(specimen) if specimen else [],
             "score": score if specimen else None,
+            "second_score": second if second and load_run(conn, second["run_id"]) else None,
             "docket": docket_overview(conn),
             "benchmark": benchmark_result(),
         })
