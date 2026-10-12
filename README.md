@@ -4,6 +4,8 @@
 
 Gainsay checks the case citations in the other side's court filings and keeps the evidence for every finding.
 
+**Demo video:** [the 3-minute walkthrough on X](https://x.com/winsznx/status/2109731348843831380), covering the problem, the checks on two sanctioned filings, and how neatlogs, Entire and cfo.ai were used.
+
 **Live:** [gainsay.vercel.app](https://gainsay.vercel.app), a read-only copy of the results. Built for neatHack, October 10 to 12, 2026. See also the [architecture](docs/architecture.md), the [evidence for judges](docs/evidence.md), and [how neatlogs, Entire and cfo.ai were used](#how-neatlogs-entire-and-cfoai-were-used).
 
 ![A Gainsay run page: one bar per citation, a ledger of citations with the five checks drawn as a line, and the evidence for the selected citation](docs/screenshots/run.png)

@@ -62,7 +62,7 @@ The forecast has cash bottoming out at −$53.20 in July 2027 and turning positi
 
 ## You built in public
 
-Posts tagged #neatHack, linked in the submission.
+The submission post, with the demo video, quote-tweets the neatlogs launch post and tags @neatlogs, @EntireHQ and @arithecfo: https://x.com/winsznx/status/2109731348843831380
 
 ## You wrote the code during the hackathon
 
