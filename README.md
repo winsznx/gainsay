@@ -4,7 +4,7 @@
 
 Gainsay checks the case citations in the other side's court filings and keeps the evidence for every finding.
 
-**Live:** [gainsay.vercel.app](https://gainsay.vercel.app), a read-only copy of the results. Built for neatHack, October 10 to 12, 2026. See also the [architecture](docs/architecture.md) and the [evidence for judges](docs/evidence.md).
+**Live:** [gainsay.vercel.app](https://gainsay.vercel.app), a read-only copy of the results. Built for neatHack, October 10 to 12, 2026. See also the [architecture](docs/architecture.md), the [evidence for judges](docs/evidence.md), and [how neatlogs, Entire and cfo.ai were used](#how-neatlogs-entire-and-cfoai-were-used).
 
 ![A Gainsay run page: one bar per citation, a ledger of citations with the five checks drawn as a line, and the evidence for the selected citation](docs/screenshots/run.png)
 
@@ -147,11 +147,37 @@ The short version; [docs/architecture.md](docs/architecture.md) has the full des
 - **Replay and offline runs.** A rerun of a settled filing costs zero CourtListener and zero Claude calls (run 43). `--courtlistener offline` answers every CourtListener request from the ledger and records a miss in the finding instead of calling, so a filing can be rechecked with CAP while the quota is spent (runs 44 to 47).
 - **Live view.** While a run is active, its page says what it just did, the next three citations, and the quota countdown.
 
-## Built with neatlogs, Entire and cfo.ai
+## How neatlogs, Entire and cfo.ai were used
 
-- **neatlogs** traces every run. Each attempt is one `gainsay.check_run` trace with a `gainsay.check_citation` span per citation carrying each check's outcome, and the Claude calls inside, tagged with the commit the run used. Pauses, simulated outages and crashes, and their resumed attempts appear as separate traces; trace IDs are on each run page and in [docs/evidence.md](docs/evidence.md). neatlogs raised one incident on its own, "Citation verification returns an empty response": a proposition check whose Claude call came back with no evaluation. The judge had no path for an empty or cut-off answer, so commit `6651154` records one as Unverifiable with the reason and asks again on the next run. The traces also recorded the run that stopped at CourtListener's daily limit (run 42), which led to the Caselaw Access Project as a second source and the offline mode.
-- **Entire** recorded the coding sessions behind the work: every commit after the two that set Entire up carries an `Entire-Checkpoint` trailer, and [docs/entire/](docs/entire/) holds Entire's checkpoint list and its symbol-level analysis of the main fixes.
-- **cfo.ai** modeled the business on measured costs: about 2.6 cents of Claude per citation and nothing for CourtListener. At $29 a watched docket a month, 39 dockets cover a fixed budget of $1,010.60; the forecast first turns a monthly profit in August 2027 and recommends $8,500 of opening cash. Both exports are in [docs/cfo-ai/](docs/cfo-ai/), summed up in [docs/cfo-ai-plan.md](docs/cfo-ai-plan.md).
+Each claim below links to the record behind it.
+
+### neatlogs: watching the agent, and an incident it found
+
+Every run attempt is one `gainsay.check_run` trace with a `gainsay.check_citation` span per citation carrying its five outcomes, and the Claude calls inside, tagged with the commit the run used ([`gainsay/runner.py`](gainsay/runner.py), [`gainsay/tracing.py`](gainsay/tracing.py)). Each run's trace ID is stored in the ledger and shown on its run page; [docs/evidence.md](docs/evidence.md) lists them.
+
+![neatlogs analytics for the project: 58 traces, $4.23 of Claude, 0% errors](docs/proof/neatlogs-analytics.png)
+
+![The neatlogs trace list: one row per run and Claude call](docs/proof/neatlogs-traces.png)
+
+neatlogs raised an incident on its own, "Citation verification returns an empty response": one proposition check whose Claude call came back with no evaluation of the passages. The judge assumed every answer held the verdict JSON, so an empty or cut-off answer would have raised inside the run. Commit [`6651154`](https://github.com/winsznx/gainsay/commit/6651154) records one as Unverifiable with the reason, keeps it out of the cache, and asks again on the next run.
+
+![The incident neatlogs raised](docs/proof/neatlogs-incident.png)
+
+![The fix, commit 6651154](docs/proof/neatlogs-fix.png)
+
+The traces also recorded run 42 stopping after 7 of 50 citations at CourtListener's daily limit, with the exception on the run span. That led to the Caselaw Access Project as a second source ([`b1a9131`](https://github.com/winsznx/gainsay/commit/b1a9131)) and an offline mode ([`c7e8258`](https://github.com/winsznx/gainsay/commit/c7e8258)); run 45 then finished all 50 with no CourtListener calls.
+
+### Entire: every change on the record
+
+Entire recorded the agent sessions behind the build. Every commit after the two that installed Entire carries an `Entire-Checkpoint` trailer (`git log --format='%h %(trailers:key=Entire-Checkpoint,valueonly) %s'`), and each fix's commit body gives the number it was measured against: a court ruling, a stored filing or the benchmark. [docs/entire/](docs/entire/) holds Entire's checkpoint list and its symbol-level analysis of the main fixes. The session transcripts stay private because they quote the private product brief.
+
+![A commit with its measured result and Entire checkpoint, beside entire checkpoint list](docs/proof/entire-checkpoints.png)
+
+### cfo.ai: the business plan
+
+cfo.ai modeled the business on measured costs: about 2.6 cents of Claude per citation and nothing for CourtListener. At $29 a watched docket a month, 39 dockets cover a fixed budget of $1,010.60. Its revised forecast has cash dipping to -$53.20 in July 2027 and the first monthly profit in August 2027, so it recommends $8,500 of opening cash. Both workbook exports are in [docs/cfo-ai/](docs/cfo-ai/), summed up in [docs/cfo-ai-plan.md](docs/cfo-ai-plan.md); the chart below is drawn from the revised workbook's operating forecast.
+
+![cfo.ai's cumulative cash forecast, with and without the recommended opening cash](docs/proof/cfo-ai-forecast.png)
 
 ## Running it
 
