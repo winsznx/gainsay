@@ -248,6 +248,11 @@ code, .mono { font-family: var(--mono); font-size: 0.86em; }
 .steps p { margin-top: 4px; font-size: 13.5px; line-height: 1.5; color: var(--ink-secondary); }
 .step-count { padding-top: 10px; font-size: 12.5px; font-weight: 500; color: var(--ink-muted); white-space: nowrap; }
 .steps li.current { background: var(--brand); color: #fff; }
+.steps li[role=tab] { cursor: pointer; }
+.steps li[role=tab]:not(.current):hover { background: #fff; }
+.steps li[role=tab]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.stat-field small a { color: #fff; text-decoration: underline; }
+.stat-field small cite { font-style: italic; }
 .steps li.current p, .steps li.current .step-count { color: rgba(255, 255, 255, 0.7); }
 .steps li.current .num { background: rgba(255, 255, 255, 0.12); color: #fff; }
 .stat-field {

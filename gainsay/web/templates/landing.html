@@ -106,7 +106,7 @@
   <div class="steps-panel">
     <ol class="steps">
       {% for name, question, detail in steps %}
-      <li{% if name == busiest.name %} class="current"{% endif %}>
+      <li{% if name == busiest.name %} class="current"{% endif %}{% if specimen %} role="tab" tabindex="0" data-check="{{ name }}" aria-controls="check-{{ name }}" aria-selected="{{ "true" if name == busiest.name else "false" }}"{% endif %}>
         <span class="num" title="Check {{ loop.index }}">{{ icon(CHECK_ICONS[name], 18) }}</span>
         <div>
           <strong>{{ question }}</strong>
@@ -121,14 +121,37 @@
       </li>
       {% endfor %}
     </ol>
-    {% if score %}
+    {% if specimen %}
     <div class="stat-field">
-      <div class="glass">
-        <b>{{ score.summary.agree }} of {{ score.cases | length }}</b>
-        <span>statuses match the court's own findings</span>
-        <small>Run {{ score.run_id }} on commit {{ score.run_version }}. Counts on the left are from the same run.</small>
+      {% for name, question, _ in steps %}
+      {% set example = first_failing(specimen, name) %}
+      <div class="glass" id="check-{{ name }}" role="tabpanel"{% if name != busiest.name %} hidden{% endif %}>
+        <b>{% if name in STATUS_SET_BY %}{{ specimen.status_counts.get(STATUS_SET_BY[name], 0) }}{% else %}{{ specimen.pincite_flags }}{% endif %} of {{ specimen.citations | length }}</b>
+        <span>{{ question }} {% if name in STATUS_SET_BY %}Citations that stopped here{% else %}Pincites flagged{% endif %} in run {{ specimen.run.id }}.</span>
+        {% if example %}
+        <small><a href="/runs/{{ specimen.run.id }}?c={{ example.ordinal }}"><cite>{{ example.case_name or example.cite_text }}</cite></a>: {{ example.checks[name].reason | truncate(150) }}</small>
+        {% else %}
+        <small>No citation in run {{ specimen.run.id }} failed this check.</small>
+        {% endif %}
       </div>
+      {% endfor %}
     </div>
+    <script>
+      document.querySelectorAll(".steps [role=tab]").forEach((tab) => {
+        const select = () => {
+          document.querySelectorAll(".steps [role=tab]").forEach((other) => {
+            const on = other === tab;
+            other.classList.toggle("current", on);
+            other.setAttribute("aria-selected", on);
+            document.getElementById(other.getAttribute("aria-controls")).hidden = !on;
+          });
+        };
+        tab.addEventListener("click", select);
+        tab.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); select(); }
+        });
+      });
+    </script>
     {% endif %}
   </div>
 </section>

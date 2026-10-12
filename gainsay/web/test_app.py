@@ -116,3 +116,13 @@ def test_read_only_snapshot_is_served_without_writing(tmp_path):
     client = TestClient(create_app(path, read_only=True))
     assert client.get(f"/runs/{run_id}").status_code == 200
     assert path.stat().st_mtime_ns == before
+
+
+def test_each_check_step_selects_its_own_panel(tmp_path):
+    from gainsay.web.app import create_app as make
+    _, run_id = make_run(tmp_path)
+    html = TestClient(make(tmp_path / "ledger.sqlite")).get("/").text
+    if f"/runs/{run_id}" not in html:
+        return
+    for check in ("existence", "identity", "quotation", "proposition", "pincite"):
+        assert f'aria-controls="check-{check}"' in html and f'id="check-{check}"' in html

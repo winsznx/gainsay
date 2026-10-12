@@ -121,6 +121,16 @@ def finished_by(conn: sqlite3.Connection, run: dict[str, Any]) -> int | None:
     return row["id"] if row else None
 
 
+def first_failing(report: RunReport, check: str) -> CitationReport | None:
+    """The first citation in filing order that this check stopped (or, for the pincite, flagged)."""
+    status = STATUS_SET_BY.get(check)
+    return next(
+        (c for c in report.citations
+         if check in c.checks and c.checks[check].outcome == "fail" and (status is None or c.status == status)),
+        None,
+    )
+
+
 def first_of_each_status(report: RunReport) -> list[CitationReport]:
     """One citation per status, in status order, to show what each status looks like."""
     firsts: dict[str, CitationReport] = {}
@@ -150,6 +160,7 @@ def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False)
         CHECK_LABELS=CHECK_LABELS,
         OUTCOME_LABELS=OUTCOME_LABELS,
         STATUS_SET_BY=STATUS_SET_BY,
+        first_failing=first_failing,
         LIMITS=(MINUTE, HOUR, DAY),
         MAX_RETRIES=MAX_RETRIES,
         BACKOFF_SECONDS=BACKOFF_SECONDS,
