@@ -47,7 +47,7 @@ Show `entire status` and `git log` with the `Entire-Checkpoint` trailers.
 
 > Every commit carries an Entire checkpoint with the agent session behind it: the reasoning, the dead ends, and the measured numbers in the commit body. That is how the context carried across sessions, including when one coding agent ran out of tokens and another picked up the work.
 
-Optional, if time allows: LePhantomCite. On the held-out subset Gainsay scored F1 0.503 against 0.837 for Claude with no tools, so it makes no quality claim from that benchmark. Saying so is part of the story: the agent's claims are only the measured ones.
+Optional, if time allows: LePhantomCite. On the development subset Gainsay beats Claude with no tools on citation errors (F1 0.916 against 0.787); on the held-out subset Claude is ahead (0.837 against 0.616), partly because those runs were offline with no CourtListener name search. The difference that matters to a lawyer: each Gainsay flag comes with the opinion text or record it rests on.
 
 ## 2:40 to 3:00, cfo.ai
 
