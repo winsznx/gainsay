@@ -15,7 +15,7 @@ Files: `scoring/results/run-6-score.json`, `run-7-score.json`. Those runs were t
 
 On a real memorandum with no answer key, ECF 45, the first pass flagged 36 of 54 citations and the fixes brought it to 15 of 51 (runs 22 and 31; commits `0b2fba9`, `4b4c71c`, `9c6bb19`, `eee7aba`). On LePhantomCite, the harness first scored only citation errors with a lookup: development F1 0.612, held-out 0.503. With the Caselaw Access Project and Gainsay's full checks, development reached 0.916 on citation errors and 0.729 on all five types, and the same held-out subset, scored once afterwards, rose to 0.616 on citation errors. Claude with no tools is still ahead on held-out (0.837), and the README gives the reasons (`scoring/results/lephantomcite-*.json`).
 
-The healthy control drove fixes too: run 45 flagged 8 of Avianca's 50 citations, and after the footnote, abbreviation and Warsaw/Montreal fixes run 46 flagged 7, one of them a real miscite in Avianca's brief (commit `97938cb`).
+The healthy control drove fixes too: run 45 flagged 10 of Avianca’s 50 citations, and after the footnote, abbreviation and Warsaw/Montreal fixes run 46 flagged 7, one of them a real miscite in Avianca's brief (commit `97938cb`).
 
 ## You used neatlogs
 
