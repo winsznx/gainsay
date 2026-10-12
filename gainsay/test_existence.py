@@ -88,7 +88,7 @@ def test_westlaw_cite_is_found_by_name_and_identity_stays_unverifiable():
     assert existence.outcome == PASS
     assert existence.evidence["candidates"][0]["cluster_id"] == 9
     assert identity.outcome == UNVERIFIABLE
-    assert "does not index the reporter" in identity.reason
+    assert "outside free sources" in identity.reason
 
 
 def test_name_search_result_from_a_distant_year_does_not_count():
@@ -191,4 +191,14 @@ def test_docket_match_needs_only_a_shared_party_word():
                 return {"results": [{"caseName": "Smith v. Jones", "docketNumber": "1:11-cv-04383", "court_id": "nysd"}]}
             return {"results": []}
 
-    assert check(OtherDocketApi([lookup_result("2015 WL 4389893", 400)]), battery)[0].outcome == FAIL
+    existence = check(OtherDocketApi([lookup_result("2015 WL 4389893", 400)]), battery)[0]
+    assert existence.outcome == UNVERIFIABLE
+    assert "outside free sources" in existence.reason
+
+
+def test_westlaw_case_no_free_source_finds_is_unverifiable_not_missing():
+    martinez = Authority(2, "Martinez v. Delta Airlines, Inc.", ["2019 WL 4639462"], "2019", "texapp")
+    existence, identity = check(FakeApi([lookup_result("2019 WL 4639462", 404)]), martinez)
+    assert existence.outcome == UNVERIFIABLE
+    assert existence.reason.startswith("2019 WL 4639462 is outside free sources")
+    assert "no case named Martinez" in existence.reason

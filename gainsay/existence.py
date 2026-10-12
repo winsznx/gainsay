@@ -13,6 +13,7 @@ Otherwise the case is searched by name, court and year:
   wrong.
 """
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -27,6 +28,9 @@ SEARCH_PATH = "search/"
 YEAR_TOLERANCE = 1
 MAX_CITES_PER_LOOKUP = 250
 EVIDENCE_CANDIDATES = 5
+
+_DATABASE_CITE = re.compile(r"\b(?:WL|LEXIS)\b")
+_OUTSIDE_FREE_SOURCES = "{cite} is outside free sources: CourtListener can't see Westlaw or Lexis cites"
 
 _UNRESOLVED_REASONS = {
     404: "CourtListener has no case at {cite}",
@@ -88,6 +92,16 @@ def check_authority(
     existence, found = _search_by_name(api, authority)
     if existence.outcome == FAIL and authority.docket_number and authority.court:
         existence = _docket_exists(api, authority) or existence
+    if existence.outcome == FAIL and _only_database_cites(authority):
+        # Not finding a Westlaw or Lexis case in free sources proves nothing,
+        # so it stays unresolved rather than becoming "Not found".
+        existence = Finding(
+            "existence",
+            UNVERIFIABLE,
+            f"{_OUTSIDE_FREE_SOURCES.format(cite=', '.join(authority.reporter_cites))}, "
+            f"and {existence.reason}",
+            existence.evidence,
+        )
     if resolved:
         others = [_cluster_summary(c) for _, c in resolved]
         identity = Finding(
@@ -110,11 +124,20 @@ def check_authority(
         identity = Finding(
             "identity",
             UNVERIFIABLE,
-            "; ".join(_UNRESOLVED_REASONS.get(s, _UNRESOLVED_REASONS[None]).format(cite=c)
-                      for c, s in statuses.items()),
+            "; ".join(_unresolved_reason(c, s) for c, s in statuses.items()),
             lookup_evidence,
         )
     return existence, identity
+
+
+def _only_database_cites(authority: Authority) -> bool:
+    return bool(authority.reporter_cites) and all(_DATABASE_CITE.search(c) for c in authority.reporter_cites)
+
+
+def _unresolved_reason(cite: str, status: int | None) -> str:
+    if _DATABASE_CITE.search(cite):
+        return _OUTSIDE_FREE_SOURCES.format(cite=cite)
+    return _UNRESOLVED_REASONS.get(status, _UNRESOLVED_REASONS[None]).format(cite=cite)
 
 
 def _docket_exists(api: CachedCourtListener, authority: Authority) -> Finding | None:
@@ -179,9 +202,7 @@ def _nameless(
             Finding("existence", PASS, f"{cite} resolves to {name} ({cluster.get('date_filed')})", evidence),
             Finding("identity", UNVERIFIABLE, f"{no_name}, so {name} can't be compared", evidence),
         )
-    unresolved = "; ".join(
-        _UNRESOLVED_REASONS.get(s, _UNRESOLVED_REASONS[None]).format(cite=c) for c, s in statuses.items()
-    )
+    unresolved = "; ".join(_unresolved_reason(c, s) for c, s in statuses.items())
     reason = f"{no_name} and {unresolved}"
     return Finding("existence", UNVERIFIABLE, reason, lookup_evidence), Finding("identity", UNVERIFIABLE, reason, lookup_evidence)
 
