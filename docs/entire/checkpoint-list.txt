@@ -1,5 +1,197 @@
   branch       main
-  checkpoints  31
+  checkpoints  95
+
+● 01M4R4W98R4K0J309AWF510VET  chore: refresh the site snapshot with the Gauthier run an...
+  10-12 14:29 (cc6f7fe) chore: refresh the site snapshot with the Gauthier run and the unseen score
+
+● 01M4R4V7WZJMAK66SRV2TC47CH  docs: add the unseen benchmark score to the evidence page
+  10-12 14:29 (c1ba783) docs: add the unseen benchmark score to the evidence page
+
+● 01M4R4TMAE5TDW2GNYP6E08MNV  docs: report the unseen LePhantomCite score in the README
+  10-12 14:28 (f2f5e01) docs: report the unseen LePhantomCite score in the README
+
+● 01M4R4S03GFQZG79T7R87NF18T  fix: call a near tie on the benchmark a tie
+  10-12 14:28 (dcab8a2) fix: call a near tie on the benchmark a tie
+
+● 01M4R4R5XSY9YF41K3Z86BCPFH  "<task-notification>\n<task-id>bqoo2t7zc</task-id>\n<summary..."
+  10-12 14:27 (4d2c743) test: score the 190 LePhantomCite excerpts no run had used
+
+● 01M4R42ZFG0P75TT0D5V7N0Y6R  docs: say the first two commits have no Entire checkpoint
+  10-12 14:16 (81142e9) docs: say the first two commits have no Entire checkpoint
+
+● 01M4R41T5VARAAXXG43731Q6QS  docs: mention importing a PDF in hand and the CI workflow
+  10-12 14:15 (c274f53) docs: mention importing a PDF in hand and the CI workflow
+
+● 01M4R40QJ51PJN9WS90NX5GY86  feat: point a paused run at the later run that finished i...
+  10-12 14:14 (161cb13) feat: point a paused run at the later run that finished its filing
+
+● 01M4R3VQNG58XCPJADMF02PK57  ci: run the test suite on every push to main
+  10-12 14:12 (53180f0) ci: run the test suite on every push to main
+
+● 01M4R3T216X7QT2D23V8X2ETNW  fix: show Mata's score as Mata's, and add Gauthier's besi...
+  10-12 14:11 (6462b0f) fix: show Mata's score as Mata's, and add Gauthier's beside it
+
+● 01M4R3QPQMT6N4JQ4FWA8C6CJ8  docs: add Gauthier to the evidence and rewrite the demo a...
+  10-12 14:09 (319cd81) docs: add Gauthier to the evidence and rewrite the demo around the brief
+
+● 01M4R3M8D3FABSHA7BAS8752C2  "<task-notification>\n<task-id>bltine7cj</task-id>\n<tool-us..."
+  10-12 14:07 (47235dd) docs: report the Gauthier v. Goodyear score and drop the queued-work notes
+
+● 01M4R3M51E9C3EKC318R0YSTGF  "<task-notification>\n<task-id>bltine7cj</task-id>\n<tool-us..."
+  10-12 14:07 (e9ace80) fix: record the commit a benchmark started on, not the one it ended on
+
+● 01M4R3JYP0AKQ9V7A9YCSYMFEH  fix: don't wait out the lookup rate limit on an offline run
+  10-12 14:07 (b44af89) fix: don't wait out the lookup rate limit on an offline run
+
+● 01M4R3E70DS6WTMVZPQXSE2WRK  test: score the Gauthier v. Goodyear response against the...
+  10-12 14:04 (ca7a7bd) test: score the Gauthier v. Goodyear response against the court's order
+
+● 01M4R3CCDN6ZZQGM82068SF63P  fix: read a Texas writ history as part of the court paren...
+  10-12 14:03 (ba16ae8) fix: read a Texas writ history as part of the court parenthetical
+
+● 01M4R37K6TE272SAEPCARB5C6C  fix: end a citation at its own parentheticals and give it...
+  10-12 14:01 (a34ff8b) fix: end a citation at its own parentheticals and give it the quotes inside them
+
+● 01M4R2S2HF6S535VPKKX1EX67R  "thne wsince we hvae mande github repo public yet we can f..."
+  10-12 13:53 (d0f41a3) feat: register a filing from a PDF already in hand
+
+● 01M4R2KJP36ADGWN496FSC5A3M  docs: rewrite the README for any reader and add the archi...
+  10-12 13:50 (76c533f) docs: rewrite the README for any reader and add the architecture
+
+● 01M4R2FBZ28R4CYCC54K93MMBX  "wy are the refs in github is it what judegs need? i need ..."
+  10-12 13:47 (23746ff) chore: keep Entire session transcripts out of the public repository
+
+● 01M4R1S66PK5VGCBRB10RPNPSX  feat: score the excerpts no run has used, and check one e...
+  10-12 13:35 (5b1b99d) feat: score the excerpts no run has used, and check one entry's exhibits
+
+● 01M4R1P6K36XBGY00ZFCGNJK3R  fix: record a failed citation lookup instead of crashing ...
+  10-12 13:34 (8932745) fix: record a failed citation lookup instead of crashing the run
+
+● 01M4R1P1H3WK7RM6ZJX65J9P2N  feat: set up Gauthier v. Goodyear as a second scored docket
+  10-12 13:33 (56ce8aa) feat: set up Gauthier v. Goodyear as a second scored docket
+
+● 01M4R1NVY26267F5DXFB3NJMBZ  "<task-notification>\n<task-id>afa48718b7f872d4a</task-id>\n..."
+  10-12 13:33 (e5ba96b) fix: remove ECF stamps and dashed page numbers inside a line
+
+● 01M4QT63ZTS1ZTAZWK61EXTQ5N  "<task-notification>\n<task-id>b3z8h74sq</task-id>\n<tool-us..."
+  10-12 11:22 (90150b3) chore: publish the ledger snapshot with runs 44 to 47
+
+● 01M4QT5RBYM1B19FARWX91GAR0  "<task-notification>\n<task-id>b3z8h74sq</task-id>\n<tool-us..."
+  10-12 11:22 (b9fc9fe) fix: compare the landing's citation-error bar with Claude's citation-only arm
+
+● 01M4QT4FHCSQ0VR7AXHDBGG623  "<task-notification>\n<task-id>b3z8h74sq</task-id>\n<tool-us..."
+  10-12 11:22 (29ed661) docs: correct the control's flag count to 10 in run 45
+
+● 01M4QT40Q7TASPVM71MVNRHPCR  "<task-notification>\n<task-id>b3z8h74sq</task-id>\n<tool-us..."
+  10-12 11:21 (01c6e28) docs: add the benchmark and control history to the evidence page and demo script
+
+● 01M4QT3GK1K6291JVHTT70JRCP  "<task-notification>\n<task-id>b3z8h74sq</task-id>\n<tool-us..."
+  10-12 11:21 (84970ae) docs: report the five-type benchmark on development and held-out subsets
+
+● 01M4QT25TJDXZMEF3K9DKQFAW7  "<task-notification>\n<task-id>b3z8h74sq</task-id>\n<tool-us..."
+  10-12 11:20 (d0974db) fix: catch series of single-series reporters, and clean more name lead-ins
+
+● 01M4QS40J0REGJR81GC1XY5M4T  "<task-notification>\n<task-id>b3z8h74sq</task-id>\n<tool-us..."
+  10-12 11:04 (84a9ef3) fix: read listed pin pages, statute Id. cites and trailing commas correctly
+
+● 01M4QRNCJEQGY44CY20CYQQ65H  "<task-notification>\n<task-id>b3z8h74sq</task-id>\n<tool-us..."
+  10-12 10:56 (a353ca6) fix: read CAP page labels only for their own reporter, and check where the po...
+
+● 01M4QR6KYM02XYA7QB50R6ZB8X  "<task-notification>\n<task-id>b3z8h74sq</task-id>\n<tool-us..."
+  10-12 10:48 (0087cea) feat: judge each citation with its signal and parenthetical
+
+● 01M4QQPN4X2YFRBS2EEBAJQZ3B  perf: ask the benchmark's proposition prompts in parallel
+  10-12 10:39 (a0bdb44) perf: ask the benchmark's proposition prompts in parallel
+
+● 01M4QQMDXM67RM5GP9H5BGQHWC  docs: bring the README, evidence and demo script up to ru...
+  10-12 10:38 (7c0a244) docs: bring the README, evidence and demo script up to runs 46 and 47
+
+● 01M4QQJGPGXXHJRZQNPBZH04V2  test: score the ECF 21 reruns with CAP against the sancti...
+  10-12 10:37 (371101d) test: score the ECF 21 reruns with CAP against the sanctions opinion
+
+● 01M4QQE4N7ZJR519XGDZVAS47J  feat: script the read-only snapshot the deployed site serves
+  10-12 10:34 (7932df2) feat: script the read-only snapshot the deployed site serves
+
+● 01M4QPKNNCAD2KG4P359WGXPX2  "<task-notification>\n<task-id>blce0iiio</task-id>\n<tool-us..."
+  10-12 10:20 (97938cb) fix: cut false alarms the healthy control showed
+
+● 01M4QPF35MJ3E2YQQN4NNTS4HD  feat: check a docket entry's exhibits as filings of their...
+  10-12 10:17 (833912c) feat: check a docket entry's exhibits as filings of their own
+
+● 01M4QP6SKFVSGJ7XPQ3NVME96P  feat: show both benchmark scores on the landing, worded f...
+  10-12 10:13 (8c0ce33) feat: show both benchmark scores on the landing, worded from the data
+
+● 01M4QP6MEV13XN8W2S8CCVR9EJ  feat: let a check run answer from the ledger without spen...
+  10-12 10:13 (c7e8258) feat: let a check run answer from the ledger without spending quota
+
+● 01M4QP0CPQ0JSWAYEDN0AAQ0DH  feat: score the benchmark on all five error types with th...
+  10-12 10:09 (0aeb784) feat: score the benchmark on all five error types with the full checks
+
+● 01M4QP0A069V1YTQ3TN4VVJM7Y  feat: check parallel cites and lone short cites, and hard...
+  10-12 10:09 (730c435) feat: check parallel cites and lone short cites, and harden CAP answers
+
+● 01M4QP0783R78E19KMQEE82RBC  fix: match Bluebook abbreviations and acronyms in case names
+  10-12 10:09 (59c846f) fix: match Bluebook abbreviations and acronyms in case names
+
+● 01M4QP0249JRJRYCH9WV9Y2W0H  fix: start case names where the citation's name actually ...
+  10-12 10:09 (afd835b) fix: start case names where the citation's name actually starts
+
+● 01M4QMP8M7TMZNERXHJ716KKGE  feat: add the Caselaw Access Project as a second free source
+  10-12 09:46 (b1a9131) feat: add the Caselaw Access Project as a second free source
+
+● 01M4QMA1AY3A3CYCAP6H28NB2Y  fix: end headings at their line instead of the next sentence
+  10-12 09:40 (877a6f6) fix: end headings at their line instead of the next sentence
+
+● 01M4QM37A50WJ6PKRD1AZ8FTT8  "so all done nwo or not? aaiasde my post  my video and sub..."
+  10-12 09:36 (1aeaeff) fix: stop the read-only site reloading runs that can't change
+
+● 01M4QGNFXWKQX5QQSYKNVG4KY5  "<task-notification>\n<task-id>b715yrtoz</task-id>\n<tool-us..."
+  10-12 08:36 (713c0c4) docs: add cfo.ai's revised plan and correct the summary
+
+● 01M4QECW1EBZSDDRVVX5134C88  feat: add cfo.ai to the landing's Built with cards
+  10-12 07:56 (b3709d0) feat: add cfo.ai to the landing's Built with cards
+
+● 01M4QECQQT7VPF6MP9P3XSQ7J9  "<task-notification>\n<task-id>bfy0hx1qw</task-id>\n<tool-us..."
+  10-12 07:56 (3520f38) docs: add the cfo.ai driver model and check it against its inputs
+
+● 01M4QDDMVZAN0KJ9T08XDMPZ1R  feat: add Lucide icons and the partners' real logos
+  10-12 07:40 (44c0d58) feat: add Lucide icons and the partners' real logos
+
+● 01M4QCHFN6ECF2ABFS4Z11DWRF  "dont build a generic shit lol, see closut folder in my ma..."
+  10-12 07:24 (4ec72a8) feat: rebuild the web app on the Closeout layout
+
+● 01M4QBJ4PQD8DZ0CGKDPQ3TPYM  feat: serve a read-only ledger snapshot on Vercel
+  10-12 07:07 (8b546ce) feat: serve a read-only ledger snapshot on Vercel
+
+● 01M4QBFZ9NJZ89E6D15YA72BVT  "what is cfo?"
+  10-12 07:06 (3b77bf5) feat: add a landing page and a docket dashboard to the web app
+
+● 01M4Q8AA05MBA6E7XKFNDBP93B  "u can create reppo make it private, at submisssiom it goe..."
+  10-12 06:10 (2715f31) chore: add the MIT license
+
+● 01M4PVAM05VJA0KVT4ST54TAWD  docs: update the README, demo script and judge evidence t...
+  10-12 02:23 (c128566) docs: update the README, demo script and judge evidence to the final runs
+
+● 01M4PV4S8HVKGTDB12JEQB0M0T  fix: match short Bluebook abbreviations like "Atl." and "...
+  10-12 02:20 (04e8da0) fix: match short Bluebook abbreviations like "Atl." and "Pac."
+
+● 01M4PV0SZN1TGF9ZQG2GWMDVGY  fix: commit the filing record when a filing is fetched
+  10-12 02:18 (5e6c498) fix: commit the filing record when a filing is fetched
+
+● 01M4PTZV7VY292A9KABJK8PGD4  chore: record the held-out LePhantomCite result
+  10-12 02:17 (801ce32) chore: record the held-out LePhantomCite result
+
+● 01M4PTQNXYHKKZD9HB6FE20Y3N  "<task-notification>\n<task-id>b2w2dvfy8</task-id>\n<tool-us..."
+  10-12 02:13 (232a7d3) fix: retry dropped connections and server errors before giving up on a call
+
+● 01M4PTHBXNCDRTP6TSERT468GG  feat: draw a held-out LePhantomCite subset disjoint from ...
+  10-12 02:09 (af3d8b6) feat: draw a held-out LePhantomCite subset disjoint from the development one
+
+● 01M4PTGQDSVP83PVGVA6WDG1GZ  "<task-notification>\n<task-id>b1e63gsxm</task-id>\n<tool-us..."
+  10-12 02:09 (067281d) fix: match Bluebook contractions and acronyms, and allow pages shared by seve...
+
+● 01M4PT8R7ABQEF3KB7HC811NE3  docs: add Entire checkpoint and graph evidence
+  10-12 02:05 (ecf167f) docs: add Entire checkpoint and graph evidence
 
 ● 01M4PT5DVC69JDTR2PWK1HZVMA  feat: export a run as a Markdown report
   10-12 02:03 (a5f9f10) feat: export a run as a Markdown report
