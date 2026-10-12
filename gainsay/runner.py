@@ -47,8 +47,10 @@ class VersionMismatch(Exception):
 
 
 class SimulatedOutage(BudgetExhausted):
+    REFILL_SECONDS = 60
+
     def __init__(self, after: int):
-        super().__init__("simulated", None)
+        super().__init__("simulated", self.REFILL_SECONDS)
         self.args = (f"simulated CourtListener outage after {after} citations",)
 
     def __str__(self) -> str:
@@ -105,9 +107,11 @@ def run_checks(
             [labels[c["id"]] for c in pending[:3]],
             len(pending),
         )
+        upcoming = pending
         try:
             checker = Checker(api, authorities, citations, judge)
             for position, citation in enumerate(pending):
+                upcoming = pending[position:]
                 _maybe_fail(conn, run_id, trace_id, simulation, checked)
                 checked += 1
                 with tracing.span(
@@ -151,7 +155,7 @@ def run_checks(
             set_progress(
                 conn, run_id,
                 f"Paused: {exc}. {queued} citations queued; the next run resumes from the ledger.",
-                [], queued, waiting_until,
+                [labels[c["id"]] for c in upcoming[:3]], queued, waiting_until,
             )
         except CourtListenerError as exc:
             result = RunResult(run_id, "failed", str(exc))
