@@ -110,21 +110,25 @@ Three extraction bugs this filing exposed were fixed before run 50 and measured 
 
 ### LePhantomCite benchmark
 
-[LePhantomCite](https://arxiv.org/abs/2606.21155) is a benchmark of real brief excerpts with five kinds of labelled citation error: a case that doesn't exist, a name that doesn't match its cite, a wrong pincite, a misquote, and a statement the case doesn't support. Gainsay runs its own checks on every citation and is scored with the paper's matching rules against two baselines: a CourtListener lookup alone, and Claude with no tools, which answers from memory. Development happened on one 100-excerpt subset; a separate 100-excerpt subset was held out.
+[LePhantomCite](https://arxiv.org/abs/2606.21155) is a benchmark of real brief excerpts with five kinds of labelled citation error: a case that doesn't exist, a name that doesn't match its cite, a wrong pincite, a misquote, and a statement the case doesn't support. Gainsay runs its own checks on every citation and is scored with the paper's matching rules against two baselines: a CourtListener lookup alone, and Claude with no tools, which answers from memory. The 390 excerpts were split three ways: 100 for development, 100 held out from development, and the other 190, which no run used until the final score.
 
 | F1 (precision / recall) | Gainsay | Claude, no tools | Lookup only |
 |---|---|---|---|
-| Development, citation errors | **0.916** (0.921 / 0.912) | 0.787 (0.811 / 0.765) | 0.000 |
-| Development, all five types | **0.729** (0.674 / 0.794) | 0.720 (0.778 / 0.670) | |
-| Held out, citation errors | 0.616 (0.562 / 0.680) | **0.837** (0.833 / 0.840) | 0.034 |
-| Held out, all five types | 0.469 (0.394 / 0.578) | **0.767** (0.833 / 0.711) | |
+| Unseen 190, citation errors | 0.695 (0.630 / 0.775) | 0.686 (0.600 / 0.800) | 0.129 |
+| Unseen 190, all five types | 0.577 (0.475 / 0.735) | **0.694** (0.699 / 0.689) | |
+| Held out 100, citation errors | 0.616 (0.562 / 0.680) | **0.837** (0.833 / 0.840) | 0.034 |
+| Held out 100, all five types | 0.469 (0.394 / 0.578) | **0.767** (0.833 / 0.711) | |
+| Development 100, citation errors | **0.916** (0.921 / 0.912) | 0.787 (0.811 / 0.765) | 0.000 |
+| Development 100, all five types | **0.729** (0.674 / 0.794) | 0.720 (0.778 / 0.670) | |
 
-The held-out subset was scored once on commit `84a9ef3`, and on it Claude with no tools is ahead. Gainsay's held-out citation-error F1 rose from 0.503 under the first harness to 0.616, but most development gains didn't carry over. Two causes:
+The unseen excerpts were scored once, on commit `47235dd`. On citation errors Gainsay and Claude with no tools are even: 34 correct flags out of 54 against 33 out of 55. Across all five types Claude is ahead. Gainsay, which reads the decision, finds more of the misquotes (11 of 18 against 6) and statements the case doesn't support (57 of 70 against 47), but it also raises more flags the labels don't confirm: 259 flags for 123 matches, against Claude's 156 for 109. Claude does better on wrong pincites (15 of 23 against 11) and on cases that don't exist (all 11 against 9).
 
-- **The runs were offline.** CourtListener's daily quota was spent, so these runs answered only from the ledger and the Caselaw Access Project. With no name search, a made-up case outside CAP's coverage can't be called missing. Claude recognized all 13 made-up cases on the held-out subset from memory; Gainsay found 9.
-- **Real briefs vary more than the development subset did.** The held-out errors included reporter series that can't exist ("Mass. App. 4th"), prose and record cites folded into case names, and agency acronyms. Those were fixed in `d0974db`, after the held-out scoring, so they aren't credited to it.
+The held-out subset is where development gains first failed to carry over: its citation-error F1 rose from 0.503 under the first harness to 0.616 on commit `84a9ef3`, against 0.916 on development. Two causes, which apply to the unseen score too:
 
-The difference that matters in practice: Claude with no tools answers from what it remembers, and Gainsay answers from the record and keeps it, so every flag links to the decision text or source response behind it. The 190 excerpts no run has used are the next test, scored once with CourtListener live when the quota allows. Files: [`scoring/results/lephantomcite-*.json`](scoring/results/).
+- **Every run was offline.** CourtListener's daily quota was spent, so the benchmark answered only from the ledger and the Caselaw Access Project. With no name search, a made-up case outside CAP's coverage can't be called missing; Claude recognizes those from memory.
+- **Real briefs vary more than the development subset did.** The held-out errors included reporter series that can't exist ("Mass. App. 4th"), prose and record cites folded into case names, and agency acronyms. Those were fixed in `d0974db`, after the held-out scoring and before the unseen one.
+
+The difference that matters in practice: Claude with no tools answers from what it remembers, and Gainsay answers from the record and keeps it, so every flag links to the decision text or source response behind it. Files: [`scoring/results/lephantomcite-*.json`](scoring/results/).
 
 ## How it works
 
