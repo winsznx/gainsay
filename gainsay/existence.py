@@ -13,9 +13,11 @@ Otherwise the case is searched by name, court and year:
   wrong.
 """
 
+import logging
 import re
+import time
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 from gainsay.cache import CachedCourtListener
 from gainsay.courtlistener import BudgetExhausted, CourtListenerError
@@ -23,10 +25,14 @@ from gainsay.findings import FAIL, PASS, UNVERIFIABLE, Finding
 from gainsay.jurisdiction import court_system_fits
 from gainsay.names import names_match, parties
 
+logger = logging.getLogger(__name__)
+
 LOOKUP_PATH = "citation-lookup/"
 SEARCH_PATH = "search/"
 YEAR_TOLERANCE = 1
-MAX_CITES_PER_LOOKUP = 250
+# CourtListener looks up 60 valid citations a minute; more in one minute is a 429.
+MAX_CITES_PER_LOOKUP = 60
+LOOKUP_INTERVAL_SECONDS = 62
 EVIDENCE_CANDIDATES = 5
 
 _DATABASE_CITE = re.compile(r"\b(?:WL|LEXIS)\b")
@@ -47,17 +53,26 @@ class Authority:
     year: str | None
     court: str | None
     docket_number: str | None = None
+    invented_reporter: str | None = None
 
 
 class Lookup:
     """Citation lookup results for one filing, keyed by normalized cite."""
 
-    def __init__(self, api: CachedCourtListener, authorities: list[Authority]):
-        cites = list(dict.fromkeys(c for a in authorities for c in a.reporter_cites))
+    def __init__(
+        self,
+        api: CachedCourtListener,
+        authorities: list[Authority],
+        pause: Callable[[float], None] = time.sleep,
+    ):
+        cites = list(dict.fromkeys(c for a in authorities if not a.invented_reporter for c in a.reporter_cites))
         self.results: dict[str, dict] = {}
         self.response_ids: list[int | None] = []
         for start in range(0, len(cites), MAX_CITES_PER_LOOKUP):
             data = {"text": "; ".join(cites[start : start + MAX_CITES_PER_LOOKUP])}
+            if start and api.response_id("POST", LOOKUP_PATH, data) is None:
+                logger.warning("citation lookup takes 60 citations a minute, waiting %ss", LOOKUP_INTERVAL_SECONDS)
+                pause(LOOKUP_INTERVAL_SECONDS)
             for result in api.post_json(LOOKUP_PATH, data):
                 for cite in result.get("normalized_citations") or [result["citation"]]:
                     self.results[cite] = result
@@ -80,6 +95,10 @@ def check_authority(
         "statuses": statuses,
         "api_response_ids": lookup.response_ids,
     }
+    if authority.invented_reporter:
+        reason = f"{', '.join(authority.reporter_cites)}: {authority.invented_reporter}"
+        evidence = {"source": "reporters-db", "reason": authority.invented_reporter}
+        return Finding("existence", FAIL, reason, evidence), Finding("identity", UNVERIFIABLE, reason, evidence)
     if not authority.case_name.strip():
         return _nameless(authority, resolved, statuses, lookup_evidence)
     for cite, cluster in resolved:

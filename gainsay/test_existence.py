@@ -202,3 +202,40 @@ def test_westlaw_case_no_free_source_finds_is_unverifiable_not_missing():
     assert existence.outcome == UNVERIFIABLE
     assert existence.reason.startswith("2019 WL 4639462 is outside free sources")
     assert "no case named Martinez" in existence.reason
+
+
+def test_invented_reporter_fails_existence_without_any_api_call():
+    smith = Authority(8, "Smith v. Jones Corp.", ["475 F.6th 972"], "1983", None,
+                      invented_reporter="there is no F.6th: the newest series of that reporter is F.4th")
+
+    class NoApi(FakeApi):
+        def get_json(self, path, params):
+            raise AssertionError("no search for an invented reporter")
+
+    api = NoApi([])
+    existence, identity = check(api, smith)
+    assert existence.outcome == FAIL
+    assert existence.reason == "475 F.6th 972: there is no F.6th: the newest series of that reporter is F.4th"
+    assert identity.outcome == UNVERIFIABLE
+
+
+def test_lookups_go_out_sixty_citations_at_a_time_a_minute_apart():
+    from gainsay.existence import LOOKUP_INTERVAL_SECONDS
+    authorities = [Authority(i, f"Case{i} v. Other", [f"{i} U.S. {i}"], None, None) for i in range(1, 131)]
+
+    class CountingApi(FakeApi):
+        def __init__(self):
+            super().__init__([])
+            self.posts = []
+
+        def post_json(self, path, data):
+            self.posts.append(data["text"].count(";") + 1)
+            return []
+
+        def response_id(self, method, path, params):
+            return None
+
+    api, pauses = CountingApi(), []
+    Lookup(api, authorities, pause=pauses.append)
+    assert api.posts == [60, 60, 10]
+    assert pauses == [LOOKUP_INTERVAL_SECONDS, LOOKUP_INTERVAL_SECONDS]

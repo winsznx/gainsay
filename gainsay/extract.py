@@ -19,6 +19,7 @@ from eyecite.models import (
 )
 
 from gainsay.pdf_text import ECF_HEADER
+from gainsay.reporters import CITE_WITH_SERIES, invented_series
 
 _MARGIN_NUMBER = re.compile(r"^\d{1,3}[.,]?$")
 _OCR_FIXES = (
@@ -64,6 +65,7 @@ class Authority:
     year: str | None
     court: str | None
     docket_number: str | None = None
+    invented_reporter: str | None = None
 
 
 @dataclass
@@ -187,7 +189,8 @@ def extract(raw_text: str) -> Extraction:
     ]
     groups = _group_parallels(text, case_citations)
     spans = [_group_span(text, group) for group in groups]
-    protected = spans + [_full_span(c) for c in found if c not in case_citations]
+    invented = _invented_cites(text, [_full_span(c) for c in found])
+    protected = spans + [_full_span(c) for c in found if c not in case_citations] + [i["span"] for i in invented]
 
     # Tables of contents and authorities repeat the brief's citations with page
     # numbers and no proposition, so only the citations in the body are checked.
@@ -233,6 +236,32 @@ def extract(raw_text: str) -> Extraction:
         )
 
     nested = find_nested_quotes(text, quotes, [o.span[0] for o in occurrences])
+    for item in invented:
+        authority = Authority(
+            ordinal=len(authorities) + 1,
+            case_name=item["case_name"],
+            reporter_cites=[item["cite"]],
+            year=item["year"],
+            court=None,
+            invented_reporter=item["reason"],
+        )
+        authorities.append(authority)
+        occurrences.append(
+            Occurrence(
+                ordinal=0,
+                kind="full",
+                authority=authority,
+                cite_text=text[item["span"][0] : item["span"][1]],
+                pincite=item["pincite"],
+                span=item["span"],
+                proposition=_proposition(text, sentences, protected, item["span"]),
+                in_quotation=any(qs <= item["span"][0] < qe for qs, qe in quotes),
+            )
+        )
+    occurrences.sort(key=lambda o: o.span[0])
+    for ordinal, occurrence in enumerate(occurrences, start=1):
+        occurrence.ordinal = ordinal
+
     _attribute_quotes(text, quotes + nested, sentences, occurrences)
     return Extraction(
         text=text,
@@ -349,6 +378,62 @@ def _refers_to_record(text: str, previous: "Occurrence", span: tuple[int, int], 
         return True
     paged = previous.authority and not any(_YEAR_FIRST_CITE.match(c) for c in previous.authority.reporter_cites)
     return bool(pincite and "¶" in pincite and paged)
+
+
+def _invented_cites(text: str, known_spans: list[tuple[int, int]]) -> list[dict]:
+    """Citations to reporter series that don't exist, which eyecite can't see.
+
+    "Smith v. Jones, 475 F.6th 972, 1010 (8th Cir. 1983)": the case name is
+    taken back to the start of its clause, and the pincite and year forward.
+    """
+    found = []
+    for match in CITE_WITH_SERIES.finditer(text):
+        reason = invented_series(match.group("reporter"))
+        if reason is None or _inside(match.start(), known_spans):
+            continue
+        name, start = _name_before(text, match.start())
+        after = re.match(r"(?:,\s*(?:at\s*)?(\d+(?:[-–]\d+)?))?\s*(\(([^)]*?(\d{4}))\))?", text[match.end() :])
+        found.append({
+            "span": (start, match.end() + (after.end() if after else 0)),
+            "cite": f"{match.group('volume')} {match.group('reporter')} {match.group('page')}",
+            "case_name": name,
+            "pincite": after.group(1) if after else None,
+            "year": after.group(4) if after and after.group(4) else None,
+            "reason": reason,
+        })
+    return found
+
+
+_NAME_CONNECTORS = frozenset("of the & and ex rel. de la in re v. for".split())
+_LEAD_INS = frozenset("in see also cf. e.g., but compare".split())
+
+
+def _name_before(text: str, cite_start: int) -> tuple[str, int]:
+    """The "Smith v. Jones Corp." just before a cite, and where it starts.
+
+    Walks back from the comma before the cite over capitalised words and
+    connectors, so it stops at the sentence that came before.
+    """
+    window_start = max(0, cite_start - 160)
+    head = text[window_start:cite_start].rstrip()
+    if not head.endswith(",") or " v. " not in head:
+        return "", cite_start
+    words = head[:-1].split(" ")
+    kept: list[str] = []
+    for word in reversed(words):
+        if word and (word[0].isupper() or word[0].isdigit() or word.lower() in _NAME_CONNECTORS):
+            kept.append(word)
+            continue
+        break
+    kept.reverse()
+    while kept and kept[0].lower().strip(",") in _LEAD_INS and not (
+        kept[0].lower() == "in" and len(kept) > 1 and kept[1].lower() == "re"
+    ):
+        kept.pop(0)
+    name = " ".join(kept)
+    if " v. " not in f" {name} ":
+        return "", cite_start
+    return name, window_start + head.rfind(name)
 
 
 def _docket_number(text: str, citation: FullCaseCitation) -> str | None:

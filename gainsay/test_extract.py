@@ -166,3 +166,19 @@ def test_footnote_cross_references_are_not_case_citations():
     extraction = extract(text)
     assert [c.kind for c in extraction.citations] == ["full"]
     assert extraction.record_references == 1
+
+
+def test_citations_to_reporter_series_that_dont_exist_are_found():
+    text = (
+        "Courts agree the stay tolls the period. See Smith v. Jones Corp., 475 F.6th 972, 1010 (8th Cir. 1983). "
+        "The rule applies. In re Estate of Doe v. Bank of America, 936 F. Supp. 5th 413 (9th Cir. 2008). "
+        "The rule is settled. Kaiser Steel Corp. v. W.S. Ranch Co., 391 U.S. 593, 594 (1968)."
+    )
+    smith, doe, kaiser = extract(text).citations
+    assert (smith.authority.case_name, smith.authority.reporter_cites, smith.pincite) == (
+        "Smith v. Jones Corp.", ["475 F.6th 972"], "1010"
+    )
+    assert smith.authority.invented_reporter == "there is no F.6th: the newest series of that reporter is F.4th"
+    assert smith.proposition == "Courts agree the stay tolls the period."
+    assert doe.authority.case_name == "In re Estate of Doe v. Bank of America"
+    assert kaiser.authority.invented_reporter is None
