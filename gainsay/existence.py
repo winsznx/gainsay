@@ -84,7 +84,17 @@ class Lookup:
             if start and api.response_id("POST", LOOKUP_PATH, data) is None:
                 logger.warning("citation lookup takes 60 citations a minute, waiting %ss", LOOKUP_INTERVAL_SECONDS)
                 pause(LOOKUP_INTERVAL_SECONDS)
-            for result in api.post_json(LOOKUP_PATH, data):
+            try:
+                response = api.post_json(LOOKUP_PATH, data)
+            except BudgetExhausted:
+                raise
+            except CourtListenerError as exc:
+                # The cites stay unresolved with the reason, and CAP and the name search still run.
+                for cite in cites[start : start + MAX_CITES_PER_LOOKUP]:
+                    self.results[cite] = {"citation": cite, "status": None, "clusters": [], "error": str(exc)}
+                self.response_ids.append(None)
+                continue
+            for result in response:
                 for cite in result.get("normalized_citations") or [result["citation"]]:
                     self.results[cite] = result
             self.response_ids.append(api.response_id("POST", LOOKUP_PATH, data))
@@ -94,10 +104,13 @@ def check_authority(
     api: CachedCourtListener, lookup: Lookup, authority: Authority, cap: Cap | None = None
 ) -> tuple[Finding, Finding]:
     statuses: dict[str, int | None] = {}
+    failures: dict[str, str] = {}
     resolved: list[tuple[str, dict]] = []
     for cite in authority.reporter_cites:
         result = lookup.results.get(cite)
         statuses[cite] = result["status"] if result else None
+        if result and result.get("error"):
+            failures[cite] = result["error"]
         if result and result["status"] in (200, 300):
             resolved.extend((cite, cluster) for cluster in result["clusters"])
 
@@ -105,6 +118,7 @@ def check_authority(
         "source": "citation-lookup",
         "statuses": statuses,
         "api_response_ids": lookup.response_ids,
+        **({"lookup_errors": failures} if failures else {}),
     }
     if authority.invented_reporter:
         reason = f"{', '.join(authority.reporter_cites)}: {authority.invented_reporter}"
@@ -194,7 +208,10 @@ def check_authority(
             {**lookup_evidence, "cap": [a.evidence() for a in cap_answers]},
         )
     else:
-        reasons = [_unresolved_reason(c, s) for c, s in statuses.items()]
+        reasons = [
+            f"CourtListener's lookup failed for {c}: {failures[c]}" if c in failures else _unresolved_reason(c, s)
+            for c, s in statuses.items()
+        ]
         if cap_error:
             reasons.append(f"the Caselaw Access Project could not be read: {cap_error}")
         identity = Finding("identity", UNVERIFIABLE, "; ".join(reasons), lookup_evidence)

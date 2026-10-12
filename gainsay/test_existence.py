@@ -385,3 +385,20 @@ def test_an_untied_short_cite_is_checked_against_the_case_holding_its_page():
     assert identity.evidence["untied_short"] is True
     existence, identity, case = check_untied_short(FakeVolumeCap([]), "Torrao, 923 F.2d at 234")
     assert identity.outcome == UNVERIFIABLE
+
+
+def test_a_failed_lookup_is_recorded_and_cap_still_answers():
+    from gainsay.courtlistener import CourtListenerError
+
+    class DownApi(FakeApi):
+        def post_json(self, path, data):
+            raise CourtListenerError("citation-lookup/ returned 503")
+
+    api = DownApi([])
+    existence, identity = check_authority(api, Lookup(api, [VARGHESE]), VARGHESE, FakeCap())
+    assert identity.outcome == UNVERIFIABLE
+    assert "CourtListener's lookup failed for 925 F.3d 1339: citation-lookup/ returned 503" in identity.reason
+    cap = FakeCap({"925 F.3d 1339": CapAnswer(
+        "925 F.3d 1339", INSIDE, (cap_case("J.D. v. Azar", "925 F.3d 1291", 1291, 1349),), "url",
+    )})
+    assert check_authority(api, Lookup(api, [VARGHESE]), VARGHESE, cap)[1].outcome == FAIL
