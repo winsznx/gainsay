@@ -168,12 +168,13 @@ def upsert_filing(conn: sqlite3.Connection, manifest: dict) -> int:
         "extraction_method", "fetched_at",
     )
     updates = ", ".join(f"{c} = excluded.{c}" for c in columns if c != "recap_document_id")
-    row = conn.execute(
-        f"INSERT INTO filings ({', '.join(columns)}) "
-        f"VALUES ({', '.join('?' for _ in columns)}) "
-        f"ON CONFLICT (recap_document_id) DO UPDATE SET {updates} RETURNING id",
-        [manifest[c] for c in columns],
-    ).fetchone()
+    with conn:
+        row = conn.execute(
+            f"INSERT INTO filings ({', '.join(columns)}) "
+            f"VALUES ({', '.join('?' for _ in columns)}) "
+            f"ON CONFLICT (recap_document_id) DO UPDATE SET {updates} RETURNING id",
+            [manifest[c] for c in columns],
+        ).fetchone()
     return row["id"]
 
 

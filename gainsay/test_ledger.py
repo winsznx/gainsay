@@ -46,3 +46,9 @@ def test_saving_an_extraction_twice_replaces_it(tmp_path):
     assert {r["case_name"] for r in rows} == {"Zicherman v. Korean Air Lines Co., Ltd."}
     assert json.loads(rows[0]["reporter_cites"]) == ["516 F.3d 1237"]
     assert conn.execute("SELECT COUNT(*) FROM authorities").fetchone()[0] == 1
+
+
+def test_upserted_filing_is_committed(tmp_path):
+    path = tmp_path / "ledger.sqlite"
+    upsert_filing(connect(path), MANIFEST)
+    assert connect(path).execute("SELECT COUNT(*) FROM filings").fetchone()[0] == 1
