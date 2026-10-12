@@ -14,7 +14,7 @@ import json
 import logging
 import re
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Callable
 
@@ -58,6 +58,7 @@ class CapCase:
     slug: str
     volume: str
     file_name: str
+    page_offset: int = 0
 
     @property
     def url(self) -> str:
@@ -115,13 +116,27 @@ class Cap:
             starting = tuple(c for c in cases if c.first_page == page)
             if starting:
                 return CapAnswer(cite, STARTS, starting, url)
+            # A case can begin on the page where the one before it ends, so a
+            # page is inside a case only before its last page.
             containing = tuple(
-                c for c in cases if c.first_page and c.last_page and c.first_page < page <= c.last_page
+                c for c in cases if c.first_page and c.last_page and c.first_page < page < c.last_page
             )
             if containing:
                 return CapAnswer(cite, INSIDE, containing, url)
             return CapAnswer(cite, EMPTY, (), url)
         return CapAnswer(cite, NO_VOLUME, (), f"{BASE_URL}/{slugs[0]}/{volume}/CasesMetadata.json")
+
+    def covering(self, cite: str) -> tuple[CapCase, ...]:
+        """Every listed case whose pages include the cited page, its last page too."""
+        parts = _CITE.match(cite)
+        if not parts or not parts.group(3).isdigit():
+            return ()
+        volume, page = parts.group(1), int(parts.group(3))
+        for slug in self.slugs().get(_reporter_key(parts.group(2)), []):
+            cases = self.volume(slug, volume)
+            if cases is not None:
+                return tuple(c for c in cases if c.first_page and c.last_page and c.first_page <= page <= c.last_page)
+        return ()
 
     def opinions(self, case: CapCase) -> list[OpinionText]:
         """Each opinion in the case (majority, concurrence, dissent) with CAP's page breaks."""
@@ -129,10 +144,10 @@ class Cap:
         html = self._cached_text(path, case.url)
         if html is None:
             raise CapError(f"{case.url} is missing")
-        return [
-            parse_opinion_html(case.id, kind, body, "cap_html")
-            for kind, body in _ARTICLE.findall(html)
-        ]
+        opinions = [parse_opinion_html(case.id, kind, body, "cap_html") for kind, body in _ARTICLE.findall(html)]
+        if case.page_offset:
+            opinions = [replace(op, pages=[(at, page + case.page_offset) for at, page in op.pages]) for op in opinions]
+        return opinions
 
     def slugs(self) -> dict[str, list[str]]:
         if self._slugs is None:
@@ -210,18 +225,29 @@ def _trim_volume(text: str) -> str:
 
 
 def _case(entry: dict, slug: str, volume: str) -> CapCase:
+    """A listed case, its pages shifted to agree with its official cite.
+
+    Some volumes number their pages off from the reporter: CAP lists Noah
+    Systems v. Intuit, 675 F.3d 1302, as pages 1292-1309, and its page labels
+    run ten low too. The official cite is the reporter's, so it wins.
+    """
+    cite = entry.get("cite") or ""
+    first, last = _page(entry.get("first_page")), _page(entry.get("last_page"))
+    cited_page = _page(cite.rsplit(" ", 1)[-1]) if cite else None
+    offset = cited_page - first if cited_page is not None and first is not None else 0
     return CapCase(
         id=entry["id"],
         name=entry.get("name_abbreviation") or entry.get("name") or "",
         full_name=entry.get("name") or "",
         decision_date=entry.get("decision_date") or "",
         court=entry.get("court") or "",
-        cite=entry.get("cite") or "",
-        first_page=_page(entry.get("first_page")),
-        last_page=_page(entry.get("last_page")),
+        cite=cite,
+        first_page=first + offset if first is not None else None,
+        last_page=last + offset if last is not None else None,
         slug=slug,
         volume=volume,
         file_name=entry.get("file_name") or "",
+        page_offset=offset,
     )
 
 

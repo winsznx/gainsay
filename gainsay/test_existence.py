@@ -312,3 +312,76 @@ def test_a_cap_failure_is_recorded_not_skipped():
     assert identity.outcome == UNVERIFIABLE
     assert "the Caselaw Access Project could not be read: static.case.law timed out" in identity.reason
     assert api.searches
+
+
+def test_a_cited_page_inside_the_named_case_passes():
+    sherar = Authority(3, "Sherar v. Cullen", ["481 F.2d 946"], "1973", "ca9")
+    api = FakeApi([lookup_result("481 F.2d 946", 404)])
+    cap = FakeCap({"481 F.2d 946": CapAnswer(
+        "481 F.2d 946", INSIDE, (cap_case("Sherar v. Cullen", "481 F.2d 945", 945, 948),), "url",
+    )})
+    existence, identity = check_authority(api, Lookup(api, [sherar]), sherar, cap)
+    assert (existence.outcome, identity.outcome) == (PASS, PASS)
+    assert "falls inside Sherar v. Cullen, which begins at 481 F.2d 945" in identity.reason
+
+
+def test_a_page_no_case_in_cap_reaches_proves_nothing():
+    from gainsay.cap import EMPTY
+    jahn = Authority(4, "Jahn Transfer, Inc. v. Horizon (H&S) Freightways, Inc.", ["819 N.W.2d 563"], "2012", None)
+    api = FakeApi([lookup_result("819 N.W.2d 563", 404)])
+    cap = FakeCap({"819 N.W.2d 563": CapAnswer("819 N.W.2d 563", EMPTY, (), "url")})
+    existence, identity = check_authority(api, Lookup(api, [jahn]), jahn, cap)
+    assert identity.outcome == UNVERIFIABLE
+
+
+def test_a_parallel_cite_that_points_at_another_case_fails_identity():
+    sempier = Authority(5, "Sempier v. Johnson & Higgins", ["515 U.S. 1159", "622 F.2d 589"], "1995", "scotus")
+    api = FakeApi([
+        lookup_result("515 U.S. 1159", 200, [cluster("Johnson & Higgins v. Sempier")]),
+        lookup_result("622 F.2d 589", 200, [cluster("Reyes v. Unknown Shipping Co.")]),
+    ])
+    existence, identity = check_authority(api, Lookup(api, [sempier]), sempier)
+    assert existence.outcome == PASS
+    assert identity.outcome == FAIL
+    assert "parallel cite 622 F.2d 589 resolves to Reyes v. Unknown Shipping Co." in identity.reason
+
+
+def test_parallels_that_resolve_to_the_same_case_under_another_caption_pass():
+    tseng = Authority(6, "El Al Israel Airlines, Ltd. v. Tseng", ["525 U.S. 155", "119 S. Ct. 662"], "1999", "scotus")
+    api = FakeApi([
+        lookup_result("525 U.S. 155", 200, [cluster("El Al Israel Airlines, Ltd. v. Tsui Yuan Tseng")]),
+        lookup_result("119 S. Ct. 662", 200, [cluster("El Al Israel Airlines, Ltd. v. Tsui Yuan Tseng")]),
+    ])
+    assert check_authority(api, Lookup(api, [tseng]), tseng)[1].outcome == PASS
+
+
+class FakeVolumeCap(FakeCap):
+    def __init__(self, cases):
+        super().__init__()
+        self.cases = cases
+
+    def covering(self, cite):
+        page = int(cite.rsplit(" ", 1)[1])
+        return tuple(c for c in self.cases if c.first_page <= page <= c.last_page)
+
+    def lookup(self, cite):
+        page = int(cite.rsplit(" ", 1)[1])
+        starting = tuple(c for c in self.cases if c.first_page == page)
+        inside = tuple(c for c in self.cases if c.first_page < page < c.last_page)
+        if starting:
+            return CapAnswer(cite, STARTS, starting, "url")
+        return CapAnswer(cite, INSIDE, inside, "url") if inside else CapAnswer(cite, NOT_COVERED)
+
+
+def test_an_untied_short_cite_is_checked_against_the_case_holding_its_page():
+    from gainsay.existence import check_untied_short
+    torrao = cap_case("Torrao v. Cassidy", "923 F.2d 231", 231, 236)
+    existence, identity, case = check_untied_short(FakeVolumeCap([torrao]), "Torrao, 923 F.2d at 234")
+    assert (existence.outcome, identity.outcome) == (PASS, PASS) and case == torrao
+    other = cap_case("Lopez v. Garriga", "923 F.2d 231", 231, 236)
+    existence, identity, case = check_untied_short(FakeVolumeCap([other]), "Torrao, 923 F.2d at 234")
+    assert identity.outcome == FAIL and case is None
+    assert "923 F.2d 234 is in Lopez v. Garriga, 923 F.2d 231, in the Caselaw Access Project, not Torrao" == identity.reason
+    assert identity.evidence["untied_short"] is True
+    existence, identity, case = check_untied_short(FakeVolumeCap([]), "Torrao, 923 F.2d at 234")
+    assert identity.outcome == UNVERIFIABLE

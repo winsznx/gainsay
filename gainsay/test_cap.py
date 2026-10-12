@@ -143,3 +143,30 @@ def test_dropped_connections_are_retried_then_reported(tmp_path):
     assert client.lookup("925 F.3d 1291").status == STARTS
     with pytest.raises(CapError):
         cap(tmp_path / "other", failures=10)[0].lookup("925 F.3d 1291")
+
+
+def test_the_last_page_of_a_case_may_begin_the_next_one(tmp_path):
+    client, _ = cap(tmp_path)
+    assert client.lookup("925 F.3d 1349").status == EMPTY
+    assert client.lookup("925 F.3d 1348").status == INSIDE
+
+
+def test_pages_follow_the_official_cite_when_cap_numbers_them_off(tmp_path):
+    files = {
+        **FILES,
+        "f3d/675/CasesMetadata.json": [{
+            "id": 7, "name": "Noah Systems, Inc. v. Intuit Inc.", "name_abbreviation": "Noah Sys., Inc. v. Intuit Inc.",
+            "decision_date": "2012-04-09", "first_page": "1292", "last_page": "1309", "file_name": "1292-01",
+            "court": {"name_abbreviation": "Fed. Cir."}, "citations": [{"type": "official", "cite": "675 F.3d 1302"}],
+        }],
+        "f3d/675/html/1292-01.html": '<article class="opinion" data-type="majority"><p>'
+                                     '<a class="page-label" data-label="1294">*1294</a>The claim is indefinite.</p></article>',
+    }
+    client, _ = cap(tmp_path, files)
+    answer = client.lookup("675 F.3d 1302")
+    assert answer.status == STARTS
+    case = answer.cases[0]
+    assert (case.first_page, case.last_page, case.page_offset) == (1302, 1319, 10)
+    assert client.lookup("675 F.3d 1312").status == INSIDE
+    (opinion,) = client.opinions(case)
+    assert [page for _, page in opinion.pages] == [1304]

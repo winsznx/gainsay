@@ -16,8 +16,8 @@ import anthropic
 from gainsay.cache import CachedCourtListener
 from gainsay.cap import STARTS, Cap, CapCase, CapError
 from gainsay.courtlistener import BudgetExhausted, CourtListenerError
-from gainsay.existence import Authority, Lookup, check_authority
-from gainsay.findings import NOT_APPLICABLE, PASS, UNVERIFIABLE, Finding
+from gainsay.existence import Authority, Lookup, check_authority, check_untied_short
+from gainsay.findings import FAIL, NOT_APPLICABLE, PASS, UNVERIFIABLE, Finding
 from gainsay.names import names_match
 from gainsay.opinions import OpinionText, fetch_cluster_opinions
 from gainsay.pincite import check_pincite, first_page, parse_pin, pin_reporter
@@ -45,12 +45,13 @@ class Checker:
         citations: list[sqlite3.Row],
         judge: Judge,
         cap: Cap | None = None,
+        lookup: Lookup | None = None,
     ):
         self._api = api
         self._cap = cap
         self._judge = judge
         self._authorities = authorities
-        self._lookup = Lookup(api, list(authorities.values()))
+        self._lookup = lookup or Lookup(api, list(authorities.values()))
         self._by_authority: dict[int, tuple[Finding, Finding]] = {}
         self._texts: dict[TextSource, tuple[list[OpinionText], dict] | str] = {}
         self._pin_reporters = _pin_reporters(citations, authorities)
@@ -59,6 +60,26 @@ class Checker:
         quotes = json.loads(citation["quotes"])
         pincite = citation["pincite"]
         authority = self._authorities.get(citation["authority_id"])
+        if authority is None and citation["kind"] == "short" and self._cap is not None:
+            existence, identity, case = check_untied_short(self._cap, citation["cite_text"])
+            if case is not None:
+                source = TextSource(cap_case=case)
+                return [
+                    existence,
+                    identity,
+                    self._quotation(quotes, source, case.cite, existence),
+                    self._proposition(citation, source, case.cite, existence, identity),
+                    self._pincite(pincite, source, case.cite, identity),
+                ]
+            if identity.outcome == FAIL:
+                reason = f"pages can't be checked: {identity.reason}"
+                return [
+                    existence,
+                    identity,
+                    check_quotes(quotes, [], None) if not quotes else Finding("quotation", UNVERIFIABLE, reason),
+                    Finding("proposition", UNVERIFIABLE, reason),
+                    check_pincite(pincite, None, []) if not pincite else Finding("pincite", UNVERIFIABLE, reason),
+                ]
         if authority is None:
             reason = "short citation could not be tied to a full citation in this filing"
             return [

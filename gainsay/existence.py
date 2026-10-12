@@ -14,9 +14,10 @@ Otherwise the case is searched by name, court and year:
 
 A cite CourtListener can't resolve is also read from the Caselaw Access
 Project's volume list, which costs no quota. The named case starting at the
-cited page passes both checks without a name search. A different case there,
-or a page that falls inside another case, fails identity: CAP lists every
-case in the volumes it holds.
+cited page, or running across it, passes both checks without a name search.
+A different case starting there, or a page inside another case, fails
+identity. A page no listed case reaches says nothing: CAP's regional
+volumes leave out some decisions, such as unpublished table entries.
 """
 
 import logging
@@ -25,8 +26,11 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from eyecite import get_citations
+from eyecite.models import ShortCaseCitation
+
 from gainsay.cache import CachedCourtListener
-from gainsay.cap import EMPTY, INSIDE, STARTS, Cap, CapAnswer, CapCase, CapError
+from gainsay.cap import INSIDE, STARTS, Cap, CapAnswer, CapCase, CapError
 from gainsay.courtlistener import BudgetExhausted, CourtListenerError
 from gainsay.findings import FAIL, PASS, UNVERIFIABLE, Finding
 from gainsay.jurisdiction import court_system_fits
@@ -113,16 +117,32 @@ def check_authority(
         if matched_name:
             evidence = {**lookup_evidence, "cite": cite, "cluster": _cluster_summary(cluster)}
             reason = f"{cite} resolves to {_shorten(matched_name)} ({cluster.get('date_filed')})"
-            return Finding("existence", PASS, reason, evidence), Finding("identity", PASS, reason, evidence)
+            existence = Finding("existence", PASS, reason, evidence)
+            stray = _stray_parallels(authority, resolved, matched_name)
+            if stray:
+                others = [_cluster_summary(c) for _, c in stray]
+                return existence, Finding(
+                    "identity",
+                    FAIL,
+                    f"{reason}, but parallel cite {', '.join(dict.fromkeys(c for c, _ in stray))} resolves to "
+                    f"{'; '.join(_shorten(o['case_name'] or 'another case') for o in others)}",
+                    {**evidence, "stray_parallels": others},
+                )
+            return existence, Finding("identity", PASS, reason, evidence)
 
     cap_answers, cap_error = _ask_cap(cap, authority.reporter_cites)
     if cap_error:
         lookup_evidence = {**lookup_evidence, "cap_error": cap_error}
     for answer in cap_answers:
-        case = next((c for c in answer.cases if answer.status == STARTS and _cap_names_match(authority, c)), None)
+        case = next((c for c in answer.cases if _cap_names_match(authority, c)), None)
         if case:
             evidence = {**lookup_evidence, "source": "cap", "cap": answer.evidence(), "cap_case": case.summary()}
             reason = f"{answer.cite} is {_shorten(case.name)} ({case.decision_date}) in the Caselaw Access Project"
+            if answer.status == INSIDE:
+                reason = (
+                    f"{answer.cite} falls inside {_shorten(case.name)}, which begins at {case.cite} "
+                    f"({case.decision_date}), in the Caselaw Access Project"
+                )
             return Finding("existence", PASS, reason, evidence), Finding("identity", PASS, reason, evidence)
 
     existence, found = _search_by_name(api, authority)
@@ -181,6 +201,61 @@ def check_authority(
     return existence, identity
 
 
+def _stray_parallels(
+    authority: Authority, resolved: list[tuple[str, dict]], matched_name: str
+) -> list[tuple[str, dict]]:
+    """Parallel cites that resolve only to a different case than the one the others name.
+
+    A cite counts as stray only when none of its clusters carries the cited
+    name or the name of the case the other cites found.
+    """
+    by_cite: dict[str, list[dict]] = {}
+    for cite, cluster in resolved:
+        by_cite.setdefault(cite, []).append(cluster)
+    return [
+        (cite, clusters[0])
+        for cite, clusters in by_cite.items()
+        if not any(_matched_name(authority.case_name, c) or _matched_name(matched_name, c) for c in clusters)
+    ]
+
+
+def check_untied_short(cap: Cap, cite_text: str) -> tuple[Finding, Finding, CapCase | None]:
+    """A short cite ("Torrao, 923 F.2d at 234") whose full cite isn't in the filing.
+
+    The pinned page names a case in CAP's volume list. The short name has to
+    match it; the case it names is returned so its text can be checked.
+    """
+    parsed = next((c for c in get_citations(cite_text) if isinstance(c, ShortCaseCitation)), None)
+    name = (parsed.metadata.antecedent_guess or "").strip(" ,") if parsed else ""
+    pin = (parsed.metadata.pin_cite or "").split("-")[0].split("–")[0].strip() if parsed else ""
+    unverifiable = "short citation could not be tied to a full citation in this filing"
+    if not parsed or not name or not pin.isdigit():
+        return Finding("existence", UNVERIFIABLE, unverifiable), Finding("identity", UNVERIFIABLE, unverifiable), None
+    cite = f"{parsed.groups['volume']} {parsed.corrected_reporter()} {pin}"
+    try:
+        covering = cap.covering(cite)
+        answer = cap.lookup(cite)
+    except CapError as exc:
+        reason = f"{unverifiable}, and the Caselaw Access Project could not be read: {exc}"
+        return Finding("existence", UNVERIFIABLE, reason), Finding("identity", UNVERIFIABLE, reason), None
+    evidence = {"source": "cap", "untied_short": True, "cap": answer.evidence()}
+    case = next((c for c in covering if names_match(name, c.name) or names_match(name, c.full_name)), None)
+    if case:
+        reason = f"{cite} is in {_shorten(case.name)}, {case.cite}, in the Caselaw Access Project"
+        evidence = {**evidence, "cap_case": case.summary()}
+        return Finding("existence", PASS, reason, evidence), Finding("identity", PASS, reason, evidence), case
+    if answer.status in (STARTS, INSIDE):
+        other = answer.cases[0]
+        reason = f"{cite} is in {_shorten(other.name)}, {other.cite}, in the Caselaw Access Project, not {name}"
+        return (
+            Finding("existence", UNVERIFIABLE, f"{unverifiable}; {reason}", evidence),
+            Finding("identity", FAIL, reason, evidence),
+            None,
+        )
+    reason = f"{unverifiable}, and the Caselaw Access Project has no case at {cite}"
+    return Finding("existence", UNVERIFIABLE, reason, evidence), Finding("identity", UNVERIFIABLE, reason, evidence), None
+
+
 def _ask_cap(cap: Cap | None, cites: list[str]) -> tuple[list[CapAnswer], str | None]:
     if cap is None:
         return [], None
@@ -205,8 +280,6 @@ def _cap_contradiction(authority: Authority, answer: CapAnswer) -> str | None:
             f"no case begins at {answer.cite} in the Caselaw Access Project; that page is inside "
             f"{_shorten(case.name)}, {case.cite} (pages {case.first_page}-{case.last_page})"
         )
-    if answer.status == EMPTY:
-        return f"the Caselaw Access Project's volume holds no case at {answer.cite}"
     return None
 
 
