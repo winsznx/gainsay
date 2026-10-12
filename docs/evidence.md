@@ -23,6 +23,11 @@ The healthy control drove fixes too: run 45 flagged 10 of Avianca’s 50 citatio
 
 One trace per run attempt, a `gainsay.check_run` workflow span with one `gainsay.check_citation` span per citation carrying each check's outcome, and the Claude calls inside.
 
+Two incidents the traces surfaced, and what changed:
+
+- **Raised by neatlogs:** the incident "Citation verification returns an empty response" (one affected trace, medium priority): a proposition check's Claude call came back with no evaluation of the passages. The judge assumed every answer held the verdict JSON, so an empty or cut-off answer would have raised inside the run. Commit `6651154` makes it an Unverifiable finding with what came back and the stop reason, left out of the ledger cache so the next run asks again, with a test for an empty answer, an empty text block and a cut-off one.
+- **Recorded in the run trace:** run 42 stopped after 7 of 50 citations on CourtListener's daily budget, with the exception on the run span. The Caselaw Access Project was added as a second source (`b1a9131`) and an offline mode that answers from the ledger (`c7e8258`); run 45 then finished all 50 citations with no CourtListener calls.
+
 | Run | What it is | Trace |
 |---|---|---|
 | 50 | Gauthier v. Goodyear ECF 41, scored against the court's order, no CourtListener calls | `32bdb1190b3b2970b4ec3ea07827e038` |
