@@ -1,0 +1,487 @@
+{
+  "benchmark": "LePhantomCite eval split (arXiv 2606.21155), citation-level error types only",
+  "in_scope_types": [
+    "non_existent_citation",
+    "case_name_mismatch"
+  ],
+  "subset": {
+    "size": 100,
+    "seed": 777,
+    "role": "held-out",
+    "disjoint_from_seed": 20261012,
+    "indices": [
+      1,
+      3,
+      5,
+      11,
+      19,
+      24,
+      26,
+      29,
+      33,
+      37,
+      51,
+      52,
+      62,
+      68,
+      69,
+      70,
+      74,
+      80,
+      81,
+      82,
+      88,
+      91,
+      95,
+      96,
+      100,
+      101,
+      108,
+      111,
+      116,
+      125,
+      129,
+      137,
+      139,
+      142,
+      144,
+      145,
+      151,
+      152,
+      156,
+      157,
+      163,
+      167,
+      169,
+      176,
+      178,
+      186,
+      187,
+      188,
+      190,
+      191,
+      193,
+      194,
+      198,
+      202,
+      203,
+      212,
+      214,
+      218,
+      219,
+      224,
+      225,
+      226,
+      228,
+      229,
+      231,
+      233,
+      236,
+      237,
+      245,
+      257,
+      259,
+      272,
+      273,
+      280,
+      283,
+      290,
+      292,
+      293,
+      306,
+      309,
+      314,
+      316,
+      338,
+      347,
+      348,
+      349,
+      350,
+      351,
+      352,
+      356,
+      358,
+      360,
+      367,
+      371,
+      375,
+      377,
+      381,
+      384,
+      386,
+      388
+    ]
+  },
+  "scored_at": "2026-10-12T01:17:33+00:00",
+  "courtlistener_calls_this_run": 3,
+  "claude_calls_this_run": 100,
+  "no_tools_usage": {
+    "input_tokens": 112589,
+    "output_tokens": 21560,
+    "model": "claude-opus-5-5"
+  },
+  "caveats": [
+    "Only non_existent_citation and case_name_mismatch are scored; quote, proposition and pincite errors need opinion text for nearly every citation, which the CourtListener quota can't cover.",
+    "The gainsay arm skips the name-search fallback to save quota, so it can only under-flag.",
+    "The reporter-series check was added after inspecting labelled examples from this eval split, so its contribution is not a held-out result."
+  ],
+  "arms": [
+    {
+      "arm": "gainsay",
+      "predictions": 41,
+      "correct": 17,
+      "precision": 0.415,
+      "recall": 0.64,
+      "f1": 0.503,
+      "recall_by_type": {
+        "non_existent_citation": "9/13",
+        "case_name_mismatch": "7/12"
+      }
+    },
+    {
+      "arm": "lookup-only",
+      "predictions": 33,
+      "correct": 1,
+      "precision": 0.03,
+      "recall": 0.04,
+      "f1": 0.034,
+      "recall_by_type": {
+        "non_existent_citation": "0/13",
+        "case_name_mismatch": "1/12"
+      }
+    },
+    {
+      "arm": "no-tools",
+      "predictions": 24,
+      "correct": 20,
+      "precision": 0.833,
+      "recall": 0.84,
+      "f1": 0.837,
+      "recall_by_type": {
+        "non_existent_citation": "13/13",
+        "case_name_mismatch": "8/12"
+      }
+    }
+  ],
+  "predictions": {
+    "gainsay": {
+      "19": [
+        "165 Wash. App. 346"
+      ],
+      "37": [
+        "885 F.3d 676"
+      ],
+      "62": [
+        "637 F.3d 783",
+        "12 F.3d 1270"
+      ],
+      "69": [
+        "753 S.W.4th 605"
+      ],
+      "70": [
+        "760 P.2d 1162"
+      ],
+      "74": [
+        "550 U.S. 544"
+      ],
+      "82": [
+        "198 F.3d 890"
+      ],
+      "88": [
+        "788 F.2d 9"
+      ],
+      "96": [
+        "479 F.3d 875"
+      ],
+      "100": [
+        "882 F.2d 361"
+      ],
+      "101": [
+        "817 F.5th 625"
+      ],
+      "129": [
+        "119 B.R. 310",
+        "119 B.R. 310"
+      ],
+      "137": [
+        "496 F.2d 1"
+      ],
+      "144": [
+        "651 F.2d 983",
+        "446 F.2d 1013"
+      ],
+      "145": [
+        "536 U.S. 14",
+        "98 S.W.4th 975"
+      ],
+      "151": [
+        "189 OK 49",
+        "259 P.3d 877",
+        "408 U.S. 593",
+        "910 P.2d 987"
+      ],
+      "167": [
+        "549 S.W.4th 380"
+      ],
+      "176": [
+        "688 F.2d 816"
+      ],
+      "188": [
+        "439 F. Supp. 2d 456"
+      ],
+      "193": [
+        "999 N.Y.S.4th 160",
+        "16 F.3d 1271",
+        "952 F.2d 457"
+      ],
+      "198": [
+        "636 P.4th 734"
+      ],
+      "203": [
+        "44 So. 3d 587"
+      ],
+      "214": [
+        "491 U.S. 440"
+      ],
+      "229": [
+        "524 F. Supp. 5th 811"
+      ],
+      "257": [
+        "773 F.3d 1266"
+      ],
+      "259": [
+        "809 F.3d 1295"
+      ],
+      "273": [
+        "190 F.5th 225"
+      ],
+      "280": [
+        "770 P.2d 659",
+        "135 L. Ed. 2d 89",
+        "582 Cal. Rptr. 4th 688"
+      ],
+      "290": [
+        "59 F. Supp. 3d 974"
+      ],
+      "293": [
+        "267 F. Supp. 3d 702"
+      ]
+    },
+    "lookup-only": {
+      "19": [
+        "1991 WL 66845"
+      ],
+      "51": [
+        "2006 WL 2792768",
+        "2006 WL 890713"
+      ],
+      "108": [
+        "2013 WL 2111217",
+        "2013 WL 5593609"
+      ],
+      "129": [
+        "2002 WL 31202722"
+      ],
+      "137": [
+        "25 U.S. (12 Wheat.) 460"
+      ],
+      "142": [
+        "243 F.R.D. 604"
+      ],
+      "144": [
+        "136 FERC \u00b6 61,173",
+        "140 FERC \u00b6 61,120",
+        "136 FERC \u00b6 61,173",
+        "140 FERC \u00b661,120"
+      ],
+      "145": [
+        "600 S.W.3d 176",
+        "2020 WL 7132266",
+        "587 U.S. 460"
+      ],
+      "151": [
+        "70 O.S. 5",
+        "70 O.S. 6"
+      ],
+      "188": [
+        "2015 WL 1869458",
+        "2015 WL 1869458",
+        "2015 WL 1869458"
+      ],
+      "191": [
+        "489 U.S. 379",
+        "1996 WL 451054"
+      ],
+      "202": [
+        "2012 U.S. Dist. LEXIS 9488",
+        "2010 U.S. Dist. LEXIS 74994"
+      ],
+      "226": [
+        "2000 WL 876728",
+        "2000 WL 375259",
+        "2007 WL 4276841"
+      ],
+      "228": [
+        "2011 WL 5878376"
+      ],
+      "280": [
+        "552 U.S. 985"
+      ],
+      "283": [
+        " Add. 13",
+        " Add. 13",
+        " Add. 13"
+      ],
+      "290": [
+        "2015 WL 1744343"
+      ]
+    },
+    "no-tools": {
+      "1": [],
+      "3": [],
+      "5": [],
+      "11": [],
+      "19": [],
+      "24": [],
+      "26": [],
+      "29": [],
+      "33": [],
+      "37": [
+        "Ron Peterson Firearms, LLC v. Jones, 3 S.E.4th 887 (7th Cir. 2020)"
+      ],
+      "51": [],
+      "52": [],
+      "62": [],
+      "68": [],
+      "69": [
+        "Sabre, 753 S.W.4th 605 (Cal. Ct. App. 1981)-19"
+      ],
+      "70": [],
+      "74": [],
+      "80": [],
+      "81": [],
+      "82": [],
+      "88": [
+        "Slimick v. Silva (In re Slimick), 788 F.2d 9 (9th Cir. 1986)"
+      ],
+      "91": [],
+      "95": [],
+      "96": [],
+      "100": [],
+      "101": [
+        "Robinson, 817 F.5th 625 (11th Cir. 2015)"
+      ],
+      "108": [],
+      "111": [],
+      "116": [],
+      "125": [],
+      "129": [
+        "Brannam v. Huntington Mortgage Co., 287 F.3d 601, 605 cert. denied, 537 U.S. 1048, 254 S.W.2d 701, 154 L.Ed.2d 522 (2002)",
+        "Grigsby v. Thorp Consumer Discount Co. (In re Grigsby), 119 B.R. 310 (Bankr. E.D. Pa. 1990) vacated on other grounds, 857 Mass. App. 4th 477, 484 (9th Cir. 2009)"
+      ],
+      "137": [],
+      "139": [],
+      "142": [],
+      "144": [
+        "Md. Conservation Council Inc. v. Gilchrist, 803 Mass. App. 4th 360 (S.D.N.Y. 1992)"
+      ],
+      "145": [
+        "In re Campbell, 98 S.W.4th 975 (9th Cir. 1996)",
+        "*Miller v. Alabama*, 587 U.S. 460 (2012)"
+      ],
+      "151": [],
+      "152": [],
+      "156": [],
+      "157": [],
+      "163": [],
+      "167": [
+        "United States ex rel. Hendow v. Univ. of Phoenix, 549 S.W.4th 380, 398 (1st Cir. 2020)"
+      ],
+      "169": [],
+      "176": [
+        "Sprague v. General Motors Corp., 688 F.2d 816 (2d Cir. 1982)"
+      ],
+      "178": [],
+      "186": [],
+      "187": [],
+      "188": [],
+      "190": [],
+      "191": [],
+      "193": [
+        "*Vila v. Inter-American Inv. Corp.*, 999 N.Y.S.4th 160, 166 (N.D. Cal. 1977)"
+      ],
+      "194": [],
+      "198": [
+        "636 P.4th 734 (2d Cir. 2002)"
+      ],
+      "202": [],
+      "203": [
+        "Conley v. Gibson, 44 So. 3d 587 (Fla. 2d DCA 2010)"
+      ],
+      "212": [],
+      "214": [],
+      "218": [],
+      "219": [],
+      "224": [],
+      "225": [],
+      "226": [
+        "Farm Credit Leasing Servs. Corp. v. Ferguson Packaging Mach., Inc., No. CIV.A. 07-1900, 2007 WL 4276841, at *8 (E.D. Pa. Dec. 3, 2007)"
+      ],
+      "228": [
+        "Juris v. Inamed Corp., 685 F.3d 1294, 1320\u20131322 (11th Cir. 2012), cert. denied, 135 S. Ct. 940 (2013)"
+      ],
+      "229": [
+        "Kanida, 524 F. Supp. 5th 811 (6th Cir. 2016)"
+      ],
+      "231": [],
+      "233": [],
+      "236": [],
+      "237": [],
+      "245": [],
+      "257": [],
+      "259": [],
+      "272": [],
+      "273": [
+        "*Midwest Generation, LLP*, 190 F.5th 225 (3d Cir. 1999)"
+      ],
+      "280": [
+        "United States v. Harris*, 770 P.2d 659 (Wash. Ct. App. 1989)",
+        "United States v. Ruiz, 135 L. Ed. 2d 89 (U.S. 1996)",
+        "*United States v. Nevils*, 323 Mass. App. 4th 760 (1st Cir. 2007)",
+        "*United States v. Shelter*, 582 Cal. Rptr. 4th 688, 693 (2d Cir. 1999)"
+      ],
+      "283": [],
+      "290": [],
+      "292": [],
+      "293": [
+        "*Reed v. Wichita Cty. (Estate of Henson)*, 795 F.3d 456, 464 (5th Cir. 2015)"
+      ],
+      "306": [],
+      "309": [],
+      "314": [],
+      "316": [],
+      "338": [],
+      "347": [],
+      "348": [],
+      "349": [],
+      "350": [],
+      "351": [],
+      "352": [],
+      "356": [],
+      "358": [],
+      "360": [],
+      "367": [
+        "Bowling & Miami Investment Co. v. United States 233 U.S. 528 (1914)"
+      ],
+      "371": [],
+      "375": [],
+      "377": [],
+      "381": [],
+      "384": [],
+      "386": [],
+      "388": [
+        "Roberson v. Flemming 190 F. Supp. 802 (1960)"
+      ]
+    }
+  }
+}
