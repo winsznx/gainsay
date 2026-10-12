@@ -1,0 +1,52 @@
+# Demo script (3 minutes)
+
+The video has to explain the agent and cover neatlogs, Entire and cfo.ai: the architecture, implementation, runtime, reasoning and result for each. Every number below comes from a stored run or score file. Re-check them against the latest run before recording.
+
+## 0:00 to 0:20, the problem
+
+Show ECF 54, the *Mata v. Avianca* sanctions opinion.
+
+> In 2023, lawyers in Mata v. Avianca filed a brief citing cases that don't exist. The other side spent weeks proving it. Gainsay is an agent that reads the other side's filings off the public docket and checks every case they cite, before you have to answer them.
+
+## 0:20 to 1:20, the agent on ECF 21
+
+Run the UI (`.venv/bin/uvicorn gainsay.web.app:app`) and open the latest ECF 21 run.
+
+1. The opening sentence ("14 of 16 citations have a problem") and the strip: one bar per citation in filing order. Short bars are citations inside passages the filing quotes from another case.
+2. Open *Varghese*: "Not found in searched sources". Show the reason: the cite lookup and the name search both came back empty.
+3. Open *Kaiser Steel*: the case exists, but Claude read the whole opinion and found it is about abstaining for a New Mexico state-law question, not the bankruptcy stay. The pincite flag shows page 598 is past the opinion's last page, 595.
+4. Open *Tseng*: "Quote not in opinion". The quoted words score 57 out of 100 against the closest text in the opinion.
+5. Open *Ehrlich*: "Wrong case". Nothing exists at 360 N.J. Super. 360. The real case is 360 F.3d 366 (2d Cir. 2004).
+
+> Scored against the court's own findings in ECF 54, which Gainsay never sees while checking: it said "Not found" for all 7 cases the court found don't exist and for no real case, and its status matches the court on 12 of 13 cases. (`scoring/results/run-33-score.json`)
+
+## 1:20 to 1:50, running on its own
+
+Show `scripts/watch_docket.py` output and the docket config.
+
+> Point it at a docket and it polls for new entries, picks out the other side's filings by who filed them, and checks each one. It found 17 opposing filings on the Mata docket. CourtListener allows a limited number of calls, so when it hits the limit it pauses, and the next run resumes from the ledger without repeating work. Everything it has fetched is cached, so a rerun of ECF 21 costs zero calls.
+
+Also mention that it learned from the other side's real memorandum (ECF 45): the first pass flagged 36 of 54 citations, mostly tables of contents, record citations and unpublished cases, and the fixes brought it to 15 of 51, 8 of which are the memo naming cases the court found don't exist.
+
+## 1:50 to 2:20, neatlogs
+
+Show the neatlogs dashboard.
+
+- **Architecture:** one trace per run attempt. A `gainsay.check_run` workflow span, with one `gainsay.check_citation` span per citation carrying each check's outcome, and the Claude calls inside.
+- **Runtime:** open the trace for the latest ECF 21 run (ID on its run page).
+- **Recovery:** a paused attempt records the 429 on the run span, and the next attempt's trace finishes the run.
+- **Result, before and after:** run 6 (commit `2dd81a3`) against run 7 (commit `c8ceff1`). The single-quote and wrong-case fixes took existence precision from 0.88 to 1.00 and agreement with the court from 11 to 12 of 13 (`scoring/results/run-6-score.json`, `run-7-score.json`).
+
+## 2:20 to 2:40, Entire
+
+Show `entire status` and `git log` with the `Entire-Checkpoint` trailers.
+
+> Every commit carries an Entire checkpoint with the agent session behind it: the reasoning, the dead ends, and the measured numbers in the commit body. That is how the context carried across sessions, including when one coding agent ran out of tokens and another picked up the work.
+
+## 2:40 to 3:00, cfo.ai
+
+Show the cfo.ai business plan.
+
+> The plan is built on measured costs: about 2.6 cents of Claude per citation checked, and nothing for CourtListener. (`docs/cfo-ai-inputs.md`)
+
+Close on the repo URL.
