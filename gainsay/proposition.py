@@ -14,6 +14,7 @@ import json
 import math
 import re
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -191,6 +192,33 @@ class ClaudeJudge:
         self.cache_hits = 0
 
     def __call__(self, system: str, user: str) -> dict[str, Any]:
+        request, key = self._request(system, user)
+        cached = self._cached(key)
+        if cached is not None:
+            self.cache_hits += 1
+            return cached
+        result = self._ask(request)
+        self.calls += 1
+        self._store(key, request, result)
+        return result
+
+    def prefetch(self, prompts: list[tuple[str, str]], workers: int = 8) -> int:
+        """Ask for every uncached (system, user) prompt at once, so later calls are served from the ledger.
+
+        The model calls run in parallel; the ledger is written from this thread.
+        """
+        pending: dict[str, dict[str, Any]] = {}
+        for system, user in prompts:
+            request, key = self._request(system, user)
+            if key not in pending and self._cached(key) is None:
+                pending[key] = request
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for key, result in zip(pending, pool.map(self._ask, pending.values())):
+                self._store(key, pending[key], result)
+                self.calls += 1
+        return len(pending)
+
+    def _request(self, system: str, user: str) -> tuple[dict[str, Any], str]:
         request = {
             "model": MODEL,
             "max_tokens": MAX_TOKENS,
@@ -198,18 +226,14 @@ class ClaudeJudge:
             "messages": [{"role": "user", "content": user}],
             "output_config": {"effort": EFFORT, "format": {"type": "json_schema", "schema": VERDICT_SCHEMA}},
         }
-        key = hashlib.sha256(json.dumps(request, sort_keys=True).encode()).hexdigest()
-        row = self._conn.execute(
-            "SELECT response FROM llm_responses WHERE request_hash = ?", (key,)
-        ).fetchone()
-        if row:
-            self.cache_hits += 1
-            return json.loads(row["response"])
+        return request, hashlib.sha256(json.dumps(request, sort_keys=True).encode()).hexdigest()
 
-        message = self._client.beta.messages.create(
-            **request, betas=[FALLBACK_BETA], fallbacks="default"
-        )
-        self.calls += 1
+    def _cached(self, key: str) -> dict[str, Any] | None:
+        row = self._conn.execute("SELECT response FROM llm_responses WHERE request_hash = ?", (key,)).fetchone()
+        return json.loads(row["response"]) if row else None
+
+    def _ask(self, request: dict[str, Any]) -> dict[str, Any]:
+        message = self._client.beta.messages.create(**request, betas=[FALLBACK_BETA], fallbacks="default")
         result: dict[str, Any] = {
             "id": message.id,
             "model": message.model,
@@ -220,12 +244,14 @@ class ClaudeJudge:
         if message.stop_reason != "refusal":
             text = next(block.text for block in message.content if block.type == "text")
             result["verdict"] = json.loads(text)
+        return result
+
+    def _store(self, key: str, request: dict[str, Any], result: dict[str, Any]) -> None:
         with self._conn:
             self._conn.execute(
-                "INSERT INTO llm_responses (request_hash, request, response, created_at) VALUES (?, ?, ?, ?)",
+                "INSERT OR IGNORE INTO llm_responses (request_hash, request, response, created_at) VALUES (?, ?, ?, ?)",
                 (key, json.dumps(request), json.dumps(result), now()),
             )
-        return result
 
 
 def _chunks(text: str) -> list[tuple[int, str]]:

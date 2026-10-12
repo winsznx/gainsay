@@ -96,3 +96,17 @@ def test_judge_sends_structured_request_with_fallback_and_caches_it(tmp_path):
     assert request["betas"] == ["server-side-fallback-2026-07-01"]
     assert request["output_config"]["format"]["type"] == "json_schema"
     assert (judge.calls, judge.cache_hits) == (1, 1)
+
+
+def test_prefetch_asks_once_for_each_uncached_prompt_and_later_calls_hit_the_ledger(tmp_path):
+    messages = FakeMessages()
+    client = SimpleNamespace(beta=SimpleNamespace(messages=messages))
+    judge = ClaudeJudge(connect(tmp_path / "ledger.sqlite"), client)
+    judge("system", "already asked")
+
+    fetched = judge.prefetch([("system", "a"), ("system", "b"), ("system", "a"), ("system", "already asked")], workers=4)
+
+    assert fetched == 2 and len(messages.requests) == 3
+    calls = judge.calls
+    assert judge("system", "b")["verdict"]["verdict"] == "supports"
+    assert judge.calls == calls

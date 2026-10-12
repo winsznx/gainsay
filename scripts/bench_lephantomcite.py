@@ -74,6 +74,17 @@ ALL_TYPES_PROMPT = (
 )
 
 
+class RecordingJudge:
+    """Collects the proposition prompts a pass would send, declining each, so they can be asked in parallel."""
+
+    def __init__(self):
+        self.prompts: list[tuple[str, str]] = []
+
+    def __call__(self, system: str, user: str) -> dict:
+        self.prompts.append((system, user))
+        return {"stop_reason": "refusal", "stop_details": "recording prompts", "id": None, "model": None}
+
+
 def gainsay_arm(api, cap, judge, excerpts) -> tuple[dict, dict, dict, dict]:
     """Run every check on every citation; return citation-level spans, all spans, lookup-only spans, findings."""
     texts = {e.index: e.text for e in excerpts}
@@ -186,6 +197,7 @@ def main() -> int:
     parser.add_argument("--all", action="store_true", help="score the whole eval split")
     parser.add_argument("--courtlistener", choices=("offline", "live"), default="offline",
                         help="offline answers only from the ledger; live may spend API quota")
+    parser.add_argument("--workers", type=int, default=8, help="parallel Claude calls for proposition checks")
     args = parser.parse_args()
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
     if not DATA.exists():
@@ -213,6 +225,10 @@ def main() -> int:
     judge = ClaudeJudge(conn, client)
     print(f"checking {len(excerpts)} excerpts, CourtListener {args.courtlistener}", flush=True)
     try:
+        recorder = RecordingJudge()
+        gainsay_arm(api, cap, recorder, excerpts)
+        print(f"asking {len(recorder.prompts)} proposition prompts, {args.workers} at a time", flush=True)
+        judge.prefetch(recorder.prompts, args.workers)
         gainsay_cited, gainsay_all, lookup_only, details = gainsay_arm(api, cap, judge, excerpts)
     except CourtListenerError as exc:
         print(f"error: {exc}. The citation lookup for this subset isn't in the ledger; "
