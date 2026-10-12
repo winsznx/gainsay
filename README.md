@@ -1,5 +1,7 @@
 # Gainsay
 
+[![tests](https://github.com/winsznx/gainsay/actions/workflows/tests.yml/badge.svg)](https://github.com/winsznx/gainsay/actions/workflows/tests.yml)
+
 Gainsay checks the case citations in the other side's court filings and keeps the evidence for every finding.
 
 **Live:** [gainsay.vercel.app](https://gainsay.vercel.app), a read-only copy of the results. Built for neatHack, October 10 to 12, 2026. See also the [architecture](docs/architecture.md) and the [evidence for judges](docs/evidence.md).
