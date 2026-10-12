@@ -35,7 +35,7 @@ _SINGLE_CLOSERS = "'’"
 _SENTENCE_END = re.compile(r"[.?!][\"”’)\]]*\s+(?=[\"“(]?[A-Z])")
 _ABBREVIATIONS = frozenset(
     "v vs co corp inc ltd no nos ct app cir dist supp super div mr mrs ms dr st jr sr "
-    "u.s e.g i.e id fed civ ill n.y n.j cal tex ga la fla stat ann al cf sec ch pp art".split()
+    "u.s e.g i.e id fed civ ill n.y n.j cal tex ga la fla stat ann al cf sec ch pp art ex exh decl aff".split()
 )
 # A table of contents or authorities line ends in a dot leader to page numbers.
 _TABLE_LEADER = re.compile(r"\.{8,}|…{3,}")
@@ -56,6 +56,12 @@ _YEAR_FIRST_CITE = re.compile(r"^\d{4} ")
 # A district court docket number as cited: "No. 13-CV-7812 PKC", "No. 13 CIV. 4861 ER".
 _DOCKET_NUMBER = re.compile(r",\s*Nos?\.\s*(\d{2})[\s-]*(cv|civ|cr)\.?[\s-]*(\d+)", re.IGNORECASE)
 _SIGNALS = re.compile(r"\b(?:see|also|cf|e\.g|accord|but|compare|and|with)\b\.?,?", re.I)
+_ENUMERATED_HEADING = re.compile(r"^(?:[IVXL]+|[A-Z])\.\s+")
+_HEADING_ENDERS = frozenset(".?!:;,")
+_SENTENCE_CLOSE = re.compile(r"[.?!:][\"”’)\]]*$")
+_TITLE_CASE_SHARE = 0.6
+# "Ex. A." ends a sentence on the exhibit's letter.
+_EXHIBIT_LABEL = re.compile(r"\b(?:Ex|Exh|Exhibit)s?\.?\s+[A-Z]$")
 _MIN_PROPOSITION_WORDS = 5
 
 
@@ -94,7 +100,11 @@ class Extraction:
 
 
 def clean_text(raw: str) -> str:
-    """Drop ECF stamps and margin paragraph numbers, rejoin lines, fix known OCR slips."""
+    """Drop ECF stamps and margin paragraph numbers, rejoin lines, fix known OCR slips.
+
+    Headings carry no closing period, so a line break stays wherever a heading
+    starts or ends and sentence_spans splits there.
+    """
     lines = [line.strip() for line in raw.splitlines()]
     kept = [
         line
@@ -102,12 +112,40 @@ def clean_text(raw: str) -> str:
         if line and not ECF_HEADER.match(line) and not _MARGIN_NUMBER.match(line)
     ]
     text = ""
+    previous_heading = False
     for line in kept:
-        separator = "" if not text or text.endswith("-") else " "
+        heading = _is_heading(line, text)
+        if not text:
+            separator = ""
+        elif heading != previous_heading:
+            separator = "\n"
+        else:
+            separator = "" if text.endswith("-") else " "
         text += separator + line
+        previous_heading = heading
     for pattern, replacement in _OCR_FIXES:
         text = pattern.sub(replacement, text)
     return re.sub(r"[ \t]+", " ", text)
+
+
+def _is_heading(line: str, text_before: str) -> bool:
+    """An all-caps line, or an enumerated title-case line that starts after a sentence ends.
+
+    "II. SANCTIONS ARE NOT WARRANTED" and "A. Mr. Schwartz's Misunderstanding of
+    ChatGPT Does Not Show Bad Faith" are headings; "A. Smith and others who
+    found nothing amiss" wrapped from the line before is not.
+    """
+    if line[-1] in _HEADING_ENDERS:
+        return False
+    words = re.findall(r"[A-Za-z][A-Za-z’'.-]*", line)
+    if sum(len(w) > 2 for w in words) >= 1 and len(words) >= 2 and line == line.upper():
+        return True
+    enumerated = _ENUMERATED_HEADING.match(line)
+    if not enumerated or (text_before and not _SENTENCE_CLOSE.search(text_before)):
+        return False
+    title_words = re.findall(r"[A-Za-z][\w’']*", line[enumerated.end():])
+    capitalized = sum(w[0].isupper() for w in title_words)
+    return len(title_words) >= 2 and capitalized >= _TITLE_CASE_SHARE * len(title_words)
 
 
 def find_quotes(text: str) -> list[tuple[int, int]]:
@@ -178,6 +216,8 @@ def sentence_spans(text: str, protected: list[tuple[int, int]]) -> list[tuple[in
         if _inside(period, protected) or _is_abbreviation(text, period):
             continue
         starts.append(match.end())
+    starts.extend(m.end() for m in re.finditer("\n", text) if not _inside(m.start(), protected))
+    starts = sorted(set(starts))
     return list(zip(starts, starts[1:] + [len(text)]))
 
 
@@ -549,6 +589,8 @@ def _inside(position: int, spans: list[tuple[int, int]]) -> bool:
 
 
 def _is_abbreviation(text: str, period: int) -> bool:
+    if _EXHIBIT_LABEL.search(text[:period]):
+        return False
     token = re.search(r"([A-Za-z.]+)$", text[:period])
     if not token:
         return False

@@ -1,4 +1,4 @@
-from gainsay.extract import clean_text, extract, find_quotes
+from gainsay.extract import clean_text, extract, find_quotes, sentence_spans
 
 OCR_PAGE = """Case 1:22-cv-01461-PKC Document 21 Filed 03/01/23 Page 7 of 10
 
@@ -192,3 +192,54 @@ def test_italic_asterisks_and_case_number_prefixes_leave_names():
     names = [c.authority.case_name for c in extract(text).citations if c.authority]
     assert names[:2] == ["Wyoming v. USDA", "In re Dimare"]
     assert "at *1" in clean_text(text)
+
+
+def test_headings_end_where_their_line_ends():
+    text = (
+        "These actions are inconsistent with evidence of bad faith behavior.\n"
+        "A. Mr. Schwartz’s Misunderstanding of ChatGPT Does Not Show Bad Faith\n"
+        "For sanctions to issue, the Court must find knowing conduct. In re Pennie & Edmonds LLP,\n"
+        "323 F.3d 86, 87 (2d Cir. 2003).\n"
+        "II. SANCTIONS ARE NOT WARRANTED BECAUSE RESPONDENTS\n"
+        "ACTIONS WERE NOT IN BAD FAITH\n"
+        "Bad faith requires more than a mistake. Id. at 90."
+    )
+    pennie, id_cite = extract(text).citations
+    assert pennie.proposition == "For sanctions to issue, the Court must find knowing conduct."
+    assert id_cite.proposition == "Bad faith requires more than a mistake."
+
+
+def test_a_wrapped_body_line_is_not_a_heading():
+    text = (
+        "The firm relied on the research of\n"
+        "A. Smith and others who found nothing amiss in the citations. See In re Pennie & Edmonds\n"
+        "LLP, 323 F.3d 86, 87 (2d Cir. 2003)."
+    )
+    (citation,) = extract(text).citations
+    assert citation.proposition.startswith("The firm relied on the research of A. Smith")
+
+
+def test_an_exhibit_letter_ends_its_sentence():
+    text = (
+        "ChatGPT was widely hailed in the press. See Alger Decl., Ex. A. Much less was being "
+        "written about its deep flaws. Id. at Ex. C. Courts weigh the state of knowledge at the time. "
+        "In re Pennie & Edmonds LLP, 323 F.3d 86, 87 (2d Cir. 2003)."
+    )
+    (citation,) = extract(text).citations
+    assert citation.proposition == "Courts weigh the state of knowledge at the time."
+    cleaned = clean_text(text)
+    sentences = [cleaned[a:b].strip() for a, b in sentence_spans(cleaned, [])]
+    assert "Much less was being written about its deep flaws." in sentences
+
+
+def test_numbered_affidavit_paragraphs_are_not_headings():
+    text = (
+        "4. That the opinion in Miller v. United Airlines, Inc., 174 F.3d 366 (2d Cir. 1999) is incomplete.\n"
+        "5. That the opinion in Shaboon v. Egyptair 2013 IL App (1st) 111279-U (Ill. App. Ct. 2013)\n"
+        "is an unpublished opinion."
+    )
+    miller, shaboon = extract(text).citations
+    assert shaboon.proposition == (
+        "That the opinion in Shaboon v. Egyptair 2013 IL App (1st) 111279-U (Ill. App. Ct. 2013) "
+        "is an unpublished opinion."
+    )
