@@ -337,3 +337,29 @@ def test_who_wrote_an_opinion_is_not_what_it_holds():
     )
     olmstead, internship = extract(text).citations
     assert olmstead.parenthetical is None and internship.parenthetical is None
+
+
+def test_an_id_after_a_statute_refers_to_the_statute():
+    text = (
+        "Retaliation is barred. Maggio v. Fla. Dep’t of Labor, 899 So. 2d 1074, 1079 (Fla. 2005). "
+        "Review is for cause under 5 U.S.C. § 7521. Id. 7521(a)."
+    )
+    citations = extract(text).citations
+    assert [c.kind for c in citations] == ["full"]
+
+
+def test_an_id_at_a_page_still_refers_to_the_case_after_a_statute_in_prose():
+    text = (
+        "Rivas v. Bowling Green Assocs., L.P., No. 13 Civ. 7812, 2014 WL 3694983, at *1 (S.D.N.Y. July 24, 2014). "
+        "The attorneys knew 28 U.S.C. § 1441(b)(2) barred removal. Id. at *2."
+    )
+    rivas, id_cite = extract(text).citations
+    assert id_cite.kind == "id" and id_cite.authority is rivas.authority
+
+
+def test_an_id_pinned_to_a_section_is_a_statute():
+    text = (
+        "Retaliation is barred. Maggio v. Fla. Dep’t of Labor, 899 So. 2d 1074, 1079 (Fla. 2005). "
+        "The statute forbids it. Id. 448.102(3). Removal requires cause. Id. 7521(a)."
+    )
+    assert [c.kind for c in extract(text).citations] == ["full"]

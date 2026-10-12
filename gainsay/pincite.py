@@ -19,8 +19,24 @@ _DATABASE_REPORTERS = re.compile(r"\b(?:WL|LEXIS)\b")
 
 
 def parse_pin(pincite: str) -> tuple[int, int] | None:
-    """"371-72" becomes (371, 372); "1254" becomes (1254, 1254)."""
-    match = re.match(r"^(\d+)(?:\s*[-–]\s*(\d+))?", pincite.strip())
+    """The pages a pincite spans: "371-72" is (371, 372), "468, 473" is (468, 473), "1254" is (1254, 1254).
+
+    Pinned pages are listed in order, so a smaller number after a comma is the
+    next parallel cite's volume ("161, 119 S. Ct.") and ends the list.
+    """
+    ranges: list[tuple[int, int]] = []
+    for piece in re.split(r"\s*(?:,|&|\band\b)\s*", pincite.strip()):
+        found = _parse_range(piece)
+        if found is None or (ranges and found[0] < ranges[-1][1]):
+            break
+        ranges.append(found)
+    if not ranges:
+        return None
+    return ranges[0][0], ranges[-1][1]
+
+
+def _parse_range(piece: str) -> tuple[int, int] | None:
+    match = re.match(r"^(\d+)(?:\s*[-–]\s*(\d+))?", piece)
     if not match:
         return None
     start = int(match.group(1))
@@ -105,7 +121,8 @@ def check_pincite(
             f"the quoted words are on page {found} of {reporter_cite}, not page {pincite}",
             {**evidence, "quote_pages": sorted(set(quote_pages))},
         )
-    if point_pages and not quote_pages and not any(start <= page <= end for page in point_pages):
+    # A passage is labelled with the page it starts on and can run onto the next one.
+    if point_pages and not quote_pages and not any(start - 1 <= page <= end for page in point_pages):
         found = ", ".join(str(p) for p in sorted(set(point_pages)))
         return Finding(
             "pincite",

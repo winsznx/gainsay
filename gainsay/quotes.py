@@ -70,7 +70,9 @@ def split_passages(quote: str) -> list[str]:
             passages.extend(re.split(r"(?<=[.?!])\s+(?=[A-Z])", part))
         else:
             passages.append(part)
-    return [p.strip() for p in passages if len(normalize(p)[0]) >= MIN_SEGMENT_CHARS]
+    # A quote cut mid-sentence keeps the filing's own comma or semicolon, which the opinion may not have there.
+    trimmed = [p.strip().rstrip(",;:").strip() for p in passages]
+    return [p for p in trimmed if len(normalize(p)[0]) >= MIN_SEGMENT_CHARS]
 
 
 def locate(passage: str, opinions: list[OpinionText], first_page: int | None) -> Match:

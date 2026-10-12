@@ -64,6 +64,8 @@ _TITLE_CASE_SHARE = 0.6
 # "Ex. A." ends a sentence on the exhibit's letter.
 _EXHIBIT_LABEL = re.compile(r"\b(?:Ex|Exh|Exhibit)s?\.?\s+[A-Z]$")
 _MIN_PROPOSITION_WORDS = 5
+# A case's Id. pins pages with "at"; "Id. § 5" or "Id. 7521(a)" pins a statute's section.
+_STATUTE_ID = re.compile(r"\s*id\.?\*?,?\s+(?:§|\d+(?:\.\d+|\())", re.IGNORECASE)
 _COURT_YEAR_ONLY = re.compile(r"^\([^()]*\b\d{4}\)\s*$")
 # A citation signal inside a name walked back over a sentence end ("Evolutionary. See Content ...").
 _SIGNAL_LEAD = re.compile(r"\b(?:See|see|Cf\.|cf\.|Accord|accord|Compare|compare)(?:,?\s+(?:also|e\.g\.,?|generally))?,?\s+")
@@ -255,6 +257,9 @@ def extract(raw_text: str) -> Extraction:
     spans = [_group_span(text, group) for group in groups]
     invented = _invented_cites(text, [_full_span(c) for c in found])
     protected = spans + [_full_span(c) for c in found if c not in case_citations] + [i["span"] for i in invented]
+    # An Id. after a statute or regulation refers to it, not to the case before, unless
+    # it pins a page with "at", which statutes don't.
+    law_starts = [c.span()[0] for c in found if c not in case_citations]
 
     # Tables of contents and authorities repeat the brief's citations with page
     # numbers and no proposition, so only the citations in the body are checked.
@@ -274,7 +279,15 @@ def extract(raw_text: str) -> Extraction:
         previous = occurrences[-1] if occurrences else None
         kind = _kind(lead)
         if isinstance(lead, IdCitation):
-            if previous is None or _refers_to_record(text, previous, span, _pincite(lead)):
+            if (
+                previous is None
+                or _refers_to_record(text, previous, span, _pincite(lead))
+                or _STATUTE_ID.match(text[span[0] : span[1] + 12])
+                or (
+                    not re.match(r"\s*id\.?,?\s+at\b", text[span[0] : span[1]], re.IGNORECASE)
+                    and any(previous.span[1] <= start < span[0] for start in law_starts)
+                )
+            ):
                 record_references += 1
                 continue
             authority = previous.authority

@@ -59,3 +59,8 @@ def test_bracketed_rewrites_split_the_quote_but_a_bracketed_letter_does_not():
         "were true and correct",
     ]
     assert split_passages("[T]hreadbare recitals of the elements") == ["[T]hreadbare recitals of the elements"]
+
+
+def test_a_quoted_fragment_drops_the_filings_trailing_comma():
+    from gainsay.quotes import split_passages
+    assert split_passages("act[ed] in an arbitrary manner,") == ["act[ed] in an arbitrary manner"]

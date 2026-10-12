@@ -61,10 +61,23 @@ def test_a_pin_inside_the_opinion_fails_when_the_quote_is_on_another_page():
 
 
 def test_a_pin_fails_when_the_point_is_made_only_on_other_pages():
-    finding = check_pincite("595", "391 U.S. 593", KAISER, point_pages=[594])
-    assert finding.reason == "the opinion makes the point on page 594 of 391 U.S. 593, not page 595"
-    assert check_pincite("595", "391 U.S. 593", KAISER, quote_pages=[595], point_pages=[594]).outcome == PASS
+    finding = check_pincite("595", "391 U.S. 593", KAISER, point_pages=[593])
+    assert finding.reason == "the opinion makes the point on page 593 of 391 U.S. 593, not page 595"
+    assert check_pincite("595", "391 U.S. 593", KAISER, quote_pages=[595], point_pages=[593]).outcome == PASS
 
 
 def test_a_relied_on_page_inside_the_pin_keeps_it_passing():
     assert check_pincite("594-95", "391 U.S. 593", KAISER, point_pages=[593, 595]).outcome == PASS
+
+
+def test_a_list_of_pinned_pages_spans_them_all():
+    assert parse_pin("468, 473") == (468, 473)
+    assert parse_pin("1009, 1011-14") == (1009, 1014)
+    assert parse_pin("371-72 n.5") == (371, 372)
+    assert parse_pin("n.2") is None
+    assert check_pincite("594, 595", "391 U.S. 593", KAISER, quote_pages=[595]).outcome == PASS
+
+
+def test_a_point_on_the_page_before_the_pin_can_run_onto_it():
+    assert check_pincite("595", "391 U.S. 593", KAISER, point_pages=[594]).outcome == PASS
+    assert check_pincite("595", "391 U.S. 593", KAISER, point_pages=[593]).outcome == FAIL
