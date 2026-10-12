@@ -257,7 +257,10 @@
         {{ benchmark.size }} {{ "excerpts no development or earlier test had used," if benchmark.role == "unseen" else "held-out excerpts" }}
         from LePhantomCite, a benchmark of real brief excerpts with labelled citation errors. F1 is shown with its
         precision and recall.
-        {% if cited.gainsay.f1 >= best_cited.f1 %}
+        {% if (cited.gainsay.f1 - best_cited.f1) | abs < 0.02 %}
+        On citation errors the two score about the same, {{ cited.gainsay.correct }} correct flags against {{ best_cited.correct }},
+        and every Gainsay flag comes with the record that backs it.
+        {% elif cited.gainsay.f1 > best_cited.f1 %}
         On citation errors Gainsay scores higher than Claude with no tools, and every flag comes with the record that backs it.
         {% else %}
         On citation errors Claude with no tools scores higher.
