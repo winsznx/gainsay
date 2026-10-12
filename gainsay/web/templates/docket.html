@@ -50,6 +50,16 @@
       <a class="title" href="/runs/{{ report.run.id }}">{{ entry.summary }}</a>
       <span class="result">{{ report.headline }} Run {{ report.run.id }}, {{ run_status(report.run) }}.</span>
       {% if report.citations %}{{ strip(report, "/runs/" ~ report.run.id, "mini") }}{% endif %}
+      {% if entry.exhibits %}
+      <ul class="exhibits">
+        {% for exhibit in entry.exhibits if exhibit.report %}
+        <li>
+          <a href="/runs/{{ exhibit.report.run.id }}">ECF {{ entry.entry_number }}-{{ exhibit.attachment_number }}</a>
+          <span>{{ exhibit.description or "Exhibit" }}. {{ exhibit.report.headline }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
     </div>
     <div class="right">
       <span class="tag role-{{ entry.role | replace(' ', '-') }}">{{ entry.role | capitalize }}</span>

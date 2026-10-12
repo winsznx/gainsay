@@ -136,6 +136,7 @@ def unchecked_opposing_entries(conn: sqlite3.Connection, docket: Docket, config:
     rows = conn.execute(
         "SELECT e.* FROM docket_entries e "
         "LEFT JOIN filings f ON f.docket_id = e.docket_id AND f.entry_number = e.entry_number "
+        "AND f.attachment_number IS NULL "
         "LEFT JOIN runs r ON r.filing_id = f.id AND r.status = 'complete' "
         "WHERE e.docket_id = ? GROUP BY e.entry_number HAVING COUNT(r.id) = 0 ORDER BY e.entry_number",
         (docket.docket_id,),

@@ -5,12 +5,12 @@
 {% set run = report.run %}
 {% set here = "/runs/" ~ run.id %}
 {% set live = report.active and not READ_ONLY %}
-{% block title %}Run {{ run.id }}: {{ filing.case_name }}, ECF {{ filing.entry_number }} | Gainsay{% endblock %}
+{% block title %}Run {{ run.id }}: {{ filing.case_name }}, {{ ecf(filing) }} | Gainsay{% endblock %}
 {% block head %}{% if live %}<meta http-equiv="refresh" content="2">{% endif %}{% endblock %}
 {% block crumbs %}
 <a href="/docket">Docket</a><span class="sep" aria-hidden="true">/</span>
 <a href="/runs">Runs</a><span class="sep" aria-hidden="true">/</span>
-<span aria-current="page">Run {{ run.id }}, ECF {{ filing.entry_number }}</span>
+<span aria-current="page">Run {{ run.id }}, {{ ecf(filing) }}</span>
 {% endblock %}
 {% block topbar_end %}<a class="btn btn-light btn-small" href="{{ here }}/report.md">{{ icon("download", 16) }}Download the report</a>{% endblock %}
 {% block content %}
@@ -31,7 +31,7 @@
 
 <header class="page-head">
   <div>
-    <p class="kicker"><cite>{{ filing.case_name }}</cite>, No. {{ filing.docket_number }} ({{ court_cite(filing.court) }}), ECF {{ filing.entry_number }}: {{ filing.description }}</p>
+    <p class="kicker"><cite>{{ filing.case_name }}</cite>, No. {{ filing.docket_number }} ({{ court_cite(filing.court) }}), {{ ecf(filing) }}: {{ filing.description }}</p>
     <h1>{{ report.headline }}</h1>
     <p>
       Run {{ run.id }} on commit <code>{{ run.version }}</code>, {{ run_status(run) }}{% if run.status_reason %} ({{ run.status_reason }}){% endif %}.

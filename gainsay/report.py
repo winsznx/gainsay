@@ -117,7 +117,7 @@ class RunReport:
 
 def list_runs(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     rows = conn.execute(
-        "SELECT r.*, f.case_name, f.court, f.docket_number, f.entry_number, f.description "
+        "SELECT r.*, f.case_name, f.court, f.docket_number, f.entry_number, f.attachment_number, f.description "
         "FROM runs r JOIN filings f ON f.id = r.filing_id ORDER BY r.id DESC"
     ).fetchall()
     return [dict(row) for row in rows]

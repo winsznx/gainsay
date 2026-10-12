@@ -28,6 +28,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--docket", type=Path, default=DEFAULT_DOCKET_CONFIG)
     parser.add_argument("--entry", type=int, default=DEFAULT_ENTRY)
+    parser.add_argument("--attachment", type=int, help="fetch this attachment (exhibit) instead of the main document")
     args = parser.parse_args()
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 
@@ -49,7 +50,7 @@ def main() -> int:
             entry_number=args.entry,
         ):
             docket = resolve_docket(conn, client, config)
-            manifest, text = fetch_filing(client, docket, args.entry)
+            manifest, text = fetch_filing(client, docket, args.entry, args.attachment)
             upsert_filing(conn, manifest)
     except (BlocklistedDocument, CourtListenerError, FetchError, TextUnavailable) as exc:
         print(f"error: {exc}", file=sys.stderr)

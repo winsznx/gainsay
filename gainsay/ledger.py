@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS filings (
     extraction_method TEXT NOT NULL,
     fetched_at TEXT NOT NULL,
     clean_text TEXT,
-    non_case_citations INTEGER
+    non_case_citations INTEGER,
+    attachment_number INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS authorities (
@@ -154,16 +155,22 @@ def connect(path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False) -> sqlite
 
 def _add_missing_columns(conn: sqlite3.Connection) -> None:
     """Columns added after a ledger was created. CREATE TABLE IF NOT EXISTS skips them."""
-    columns = {row["name"] for row in conn.execute("PRAGMA table_info(authorities)")}
-    for column in ("docket_number", "invented_reporter"):
-        if column not in columns:
-            with conn:
-                conn.execute(f"ALTER TABLE authorities ADD COLUMN {column} TEXT")
+    added = {"authorities": {"docket_number": "TEXT", "invented_reporter": "TEXT"}, "filings": {"attachment_number": "INTEGER"}}
+    for table, wanted in added.items():
+        columns = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+        for column, kind in wanted.items():
+            if column not in columns:
+                with conn:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {kind}")
 
 
-def find_filing(conn: sqlite3.Connection, docket_id: int, entry_number: int) -> sqlite3.Row | None:
+def find_filing(
+    conn: sqlite3.Connection, docket_id: int, entry_number: int, attachment: int | None = None
+) -> sqlite3.Row | None:
+    """The entry's main document, or one of its attachments (exhibits)."""
     return conn.execute(
-        "SELECT * FROM filings WHERE docket_id = ? AND entry_number = ?", (docket_id, entry_number)
+        "SELECT * FROM filings WHERE docket_id = ? AND entry_number = ? AND attachment_number IS ?",
+        (docket_id, entry_number, attachment),
     ).fetchone()
 
 
@@ -171,7 +178,7 @@ def upsert_filing(conn: sqlite3.Connection, manifest: dict) -> int:
     columns = (
         "court", "docket_number", "docket_id", "entry_number", "recap_document_id",
         "case_name", "description", "source_url", "sha256", "text_path",
-        "extraction_method", "fetched_at",
+        "extraction_method", "fetched_at", "attachment_number",
     )
     updates = ", ".join(f"{c} = excluded.{c}" for c in columns if c != "recap_document_id")
     with conn:
@@ -179,7 +186,7 @@ def upsert_filing(conn: sqlite3.Connection, manifest: dict) -> int:
             f"INSERT INTO filings ({', '.join(columns)}) "
             f"VALUES ({', '.join('?' for _ in columns)}) "
             f"ON CONFLICT (recap_document_id) DO UPDATE SET {updates} RETURNING id",
-            [manifest[c] for c in columns],
+            [manifest.get(c) for c in columns],
         ).fetchone()
     return row["id"]
 

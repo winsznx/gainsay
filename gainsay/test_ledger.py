@@ -52,3 +52,18 @@ def test_upserted_filing_is_committed(tmp_path):
     path = tmp_path / "ledger.sqlite"
     upsert_filing(connect(path), MANIFEST)
     assert connect(path).execute("SELECT COUNT(*) FROM filings").fetchone()[0] == 1
+
+
+def test_an_exhibit_is_its_own_filing(tmp_path):
+    from gainsay.ledger import connect, find_filing, upsert_filing
+    conn = connect(tmp_path / "ledger.sqlite")
+    base = {
+        "court": "nysd", "docket_number": "1:22-cv-01461", "docket_id": 1, "entry_number": 29,
+        "case_name": "Mata v. Avianca, Inc.", "description": "Affidavit", "source_url": "u", "sha256": "s",
+        "text_path": "t", "extraction_method": "pdf", "fetched_at": "now",
+    }
+    main = upsert_filing(conn, {**base, "recap_document_id": 10})
+    exhibit = upsert_filing(conn, {**base, "recap_document_id": 11, "attachment_number": 1, "description": "Exhibit A"})
+    assert find_filing(conn, 1, 29)["id"] == main
+    assert find_filing(conn, 1, 29, 1)["id"] == exhibit
+    assert find_filing(conn, 1, 29, 2) is None

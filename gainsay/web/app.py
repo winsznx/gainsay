@@ -24,6 +24,7 @@ from gainsay.checker import CHECKS
 from gainsay.courtlistener import BACKOFF_SECONDS, DAY, HOUR, MAX_RETRIES, MINUTE
 from gainsay.dockets import load_docket_config
 from gainsay.export import render_markdown
+from gainsay.filings import ecf_label
 from gainsay.overview import benchmark_result, budget_status, docket_overview, latest_mata_score
 from gainsay.ledger import DEFAULT_LEDGER_PATH, connect
 from gainsay.report import PROBLEM_STATUSES, CitationReport, RunReport, list_runs, load_run
@@ -148,6 +149,7 @@ def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False)
         DOCKET=load_docket_config(),
         READ_ONLY=read_only,
         run_status=lambda run: shown_status(run["status"], read_only),
+        ecf=lambda row: ecf_label(row["entry_number"], row.get("attachment_number")),
         scored_run_id=lambda: (latest_mata_score() or {}).get("run_id"),
     )
 

@@ -10,17 +10,17 @@
     against CourtListener, and keeps the evidence behind each finding.
   </p>
   <div class="hero-actions">
-    {% if specimen %}<a class="btn btn-dark" href="/runs/{{ specimen.run.id }}">{{ icon("file-search", 17) }}See the ECF {{ specimen.filing.entry_number }} run</a>{% endif %}
+    {% if specimen %}<a class="btn btn-dark" href="/runs/{{ specimen.run.id }}">{{ icon("file-search", 17) }}See the {{ ecf(specimen.filing) }} run</a>{% endif %}
     <a class="btn btn-light" href="/docket">{{ icon("landmark", 17) }}Open the docket</a>
   </div>
 </section>
 
 {% if specimen %}
 {% set run = specimen.run %}
-<section class="hero-stage" aria-label="Run {{ run.id }} on ECF {{ specimen.filing.entry_number }}">
+<section class="hero-stage" aria-label="Run {{ run.id }} on {{ ecf(specimen.filing) }}">
   <div class="field field-gray">
     <p class="field-caption">
-      <cite>{{ specimen.filing.case_name }}</cite>, ECF {{ specimen.filing.entry_number }}: the
+      <cite>{{ specimen.filing.case_name }}</cite>, {{ ecf(specimen.filing) }}: the
       {{ specimen.filing.description | lower }} at the center of the 2023 sanctions ruling. One citation for each status it got.
     </p>
     <ul class="float-stack">
@@ -40,7 +40,7 @@
       <header class="pc-head">
         <span class="avatar mono" aria-hidden="true">{{ specimen.filing.entry_number }}</span>
         <span>
-          <strong><cite>{{ specimen.filing.case_name }}</cite>, ECF {{ specimen.filing.entry_number }}</strong>
+          <strong><cite>{{ specimen.filing.case_name }}</cite>, {{ ecf(specimen.filing) }}</strong>
           <span>Run {{ run.id }}, {{ run.status }}, commit <code>{{ run.version }}</code></span>
         </span>
       </header>
@@ -298,7 +298,7 @@
 {% if specimen %}
 <section class="final">
   <h2>See every finding and the evidence behind it.</h2>
-  <p>Run {{ specimen.run.id }} on ECF {{ specimen.filing.entry_number }}, with the opinion text each finding rests on.</p>
+  <p>Run {{ specimen.run.id }} on {{ ecf(specimen.filing) }}, with the opinion text each finding rests on.</p>
   <div class="hero-actions">
     <a class="btn btn-light" href="/runs/{{ specimen.run.id }}">{{ icon("file-search", 17) }}Open run {{ specimen.run.id }}</a>
     <a class="btn btn-ghost" href="/runs/{{ specimen.run.id }}/report.md">{{ icon("download", 17) }}Download the report</a>

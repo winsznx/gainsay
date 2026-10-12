@@ -33,13 +33,14 @@ from gainsay.proposition import ClaudeJudge, MissingCredentials, anthropic_clien
 from gainsay.report import load_run
 from gainsay.tracing import Tracing
 from gainsay.version import run_version
-from gainsay.watch import check_entry
+from gainsay.watch import check_entry, check_exhibits
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--docket", type=Path, default=DEFAULT_DOCKET_CONFIG)
     parser.add_argument("--list", action="store_true", help="poll and list, don't check anything")
+    parser.add_argument("--exhibits", action="store_true", help="also check each opposing entry's exhibits")
     args = parser.parse_args()
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 
@@ -92,12 +93,39 @@ def main() -> int:
                 print(f"paused: {result.reason}. The next watch resumes it.", file=sys.stderr)
                 status = 2
                 break
+        if args.exhibits and status == 0:
+            status = _check_exhibits(conn, client, api, judge, tracing, docket, config, version, cap)
     finally:
         tracing.close()
         print(f"CourtListener calls: {client.calls + api.calls}, served from ledger: {api.cache_hits}")
         print(f"Claude calls: {judge.calls}, served from ledger: {judge.cache_hits}")
     return status
 
+
+
+def _check_exhibits(conn, client, api, judge, tracing, docket, config, version, cap) -> int:
+    """Check the exhibits of every opposing entry; 2 if the quota pauses a run."""
+    opposing = [
+        row["entry_number"]
+        for row in conn.execute(
+            "SELECT entry_number, description FROM docket_entries WHERE docket_id = ? ORDER BY entry_number",
+            (docket.docket_id,),
+        )
+        if opposing_names(row["description"], config)
+    ]
+    for number in opposing:
+        try:
+            results = check_exhibits(conn, client, api, judge, tracing, docket, number, version, cap)
+        except (BlocklistedDocument, FetchError, TextUnavailable) as exc:
+            print(f"ECF {number} exhibits: skipped, {exc}")
+            continue
+        for attachment, result in results:
+            report = load_run(conn, result.run_id)
+            print(f"ECF {number}-{attachment}: run {result.run_id} {result.status}. {report.headline if report else ''}")
+            if result.status == "paused":
+                print(f"paused: {result.reason}. The next watch resumes it.", file=sys.stderr)
+                return 2
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main())

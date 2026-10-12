@@ -21,12 +21,20 @@ RESULTS_DIR = REPO_ROOT / "scoring" / "results"
 
 
 @dataclass
+class ExhibitRow:
+    attachment_number: int
+    description: str
+    report: RunReport | None
+
+
+@dataclass
 class EntryRow:
     entry_number: int
     date_filed: str | None
     summary: str
     filed_by: list[str]
     report: RunReport | None = None
+    exhibits: list[ExhibitRow] = field(default_factory=list)
 
     @property
     def role(self) -> str:
@@ -67,25 +75,34 @@ def docket_overview(conn: sqlite3.Connection, config_path: Path = DEFAULT_DOCKET
     if docket is None:
         return None
     overview = DocketOverview(config.name, config.court, config.docket_number)
-    latest = {
-        row["entry_number"]: row["run_id"]
-        for row in conn.execute(
-            "SELECT f.entry_number, MAX(r.id) AS run_id FROM runs r JOIN filings f ON f.id = r.filing_id "
-            "WHERE f.docket_id = ? GROUP BY f.entry_number",
-            (docket["id"],),
-        )
-    }
+    latest: dict[tuple[int, int | None], int] = {}
+    descriptions: dict[tuple[int, int | None], str] = {}
+    for row in conn.execute(
+        "SELECT f.entry_number, f.attachment_number, f.description, MAX(r.id) AS run_id "
+        "FROM runs r JOIN filings f ON f.id = r.filing_id "
+        "WHERE f.docket_id = ? GROUP BY f.entry_number, f.attachment_number",
+        (docket["id"],),
+    ):
+        key = (row["entry_number"], row["attachment_number"])
+        latest[key] = row["run_id"]
+        descriptions[key] = row["description"] or ""
     for row in conn.execute(
         "SELECT * FROM docket_entries WHERE docket_id = ? ORDER BY entry_number", (docket["id"],)
     ):
-        run_id = latest.get(row["entry_number"])
+        number = row["entry_number"]
+        run_id = latest.get((number, None))
+        exhibits = [
+            ExhibitRow(attachment, descriptions[(n, attachment)], load_run(conn, latest[(n, attachment)]))
+            for n, attachment in sorted(k for k in latest if k[0] == number and k[1] is not None)
+        ]
         overview.entries.append(
             EntryRow(
-                entry_number=row["entry_number"],
+                entry_number=number,
                 date_filed=row["date_filed"],
                 summary=_summary(row["description"]),
                 filed_by=opposing_names(row["description"], config),
                 report=load_run(conn, run_id) if run_id else None,
+                exhibits=exhibits,
             )
         )
     return overview

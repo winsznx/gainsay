@@ -8,6 +8,7 @@ a run were simulated.
 from courts_db import courts
 
 from gainsay.checker import CHECKS
+from gainsay.filings import ecf_label
 from gainsay.report import RunReport
 
 SOURCES = (
@@ -22,9 +23,9 @@ def render_markdown(report: RunReport) -> str:
     filing, run = report.filing, report.run
     court = _COURT_CITES.get(filing["court"]) or filing["court"]
     lines = [
-        f"# Gainsay report: {filing['case_name']}, ECF {filing['entry_number']}",
+        f"# Gainsay report: {filing['case_name']}, {ecf_label(filing['entry_number'], filing.get('attachment_number'))}",
         "",
-        f"{filing['case_name']}, No. {filing['docket_number']} ({court}), ECF {filing['entry_number']}: "
+        f"{filing['case_name']}, No. {filing['docket_number']} ({court}), {ecf_label(filing['entry_number'], filing.get('attachment_number'))}: "
         f"{filing['description']}",
         "",
         f"Run {run['id']} on commit `{run['version']}`, {run['status']}, started {run['started_at']}.",

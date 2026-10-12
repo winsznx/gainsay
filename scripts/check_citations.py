@@ -32,6 +32,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--docket", type=Path, default=DEFAULT_DOCKET_CONFIG)
     parser.add_argument("--entry", type=int, default=DEFAULT_ENTRY)
+    parser.add_argument("--attachment", type=int, help="the entry's attachment (exhibit) instead of its main document")
     parser.add_argument("--resume", type=int, metavar="RUN_ID")
     parser.add_argument("--simulate-outage-after", type=int, metavar="N",
                         help="pause with a labelled simulated outage after N citations")
@@ -44,7 +45,7 @@ def main() -> int:
 
     conn = connect()
     docket = known_docket(conn, load_docket_config(args.docket))
-    filing = find_filing(conn, docket.docket_id, args.entry) if docket else None
+    filing = find_filing(conn, docket.docket_id, args.entry, args.attachment) if docket else None
     if filing is None or filing["clean_text"] is None:
         print(f"error: ECF {args.entry} has no extracted citations, run extract_citations.py first", file=sys.stderr)
         return 1

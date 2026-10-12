@@ -1,8 +1,10 @@
 """Fetch one RECAP filing's PDF and text and describe it in a manifest.
 
-The PDF is reused from disk when its sha1 still matches CourtListener's, so a
-refetch costs one call. A scanned PDF with no text layer falls back to
-CourtListener's OCR text, and the manifest says which one was used.
+A filing is a docket entry's main document or one of its attachments
+(exhibits). One request lists them all. The PDF is reused from disk when its
+sha1 still matches CourtListener's, so a refetch costs one call. A scanned
+PDF with no text layer falls back to CourtListener's OCR text, and the
+manifest says which one was used.
 """
 
 import hashlib
@@ -11,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from gainsay.blocklist import assert_not_blocklisted
+from gainsay.cache import CachedCourtListener
 from gainsay.courtlistener import CourtListenerClient, storage_url
 from gainsay.ledger import now
 from gainsay.pdf_text import choose_text, extract_pdf_text
@@ -31,22 +34,32 @@ class Docket:
     case_name: str
 
 
-def fetch_filing(client: CourtListenerClient, docket: Docket, entry: int) -> tuple[dict, str]:
+def fetch_filing(
+    client: CourtListenerClient,
+    docket: Docket,
+    entry: int,
+    attachment: int | None = None,
+    documents: list[dict] | None = None,
+) -> tuple[dict, str]:
+    """The main document, or attachment N, with documents from list_documents if already fetched."""
     assert_not_blocklisted(docket.court, docket.docket_number, entry)
-    document = find_main_document(client, docket.docket_id, entry)
+    documents = documents if documents is not None else list_documents(client, docket.docket_id, entry)
+    document = pick_document(documents, docket.docket_id, entry, attachment)
     document_number = int(document["document_number"])
     if document_number != entry:
         raise FetchError(f"asked for ECF {entry}, CourtListener returned ECF {document_number}")
     assert_not_blocklisted(docket.court, docket.docket_number, document_number)
 
+    label = ecf_label(entry, attachment)
     if not document.get("is_available") or not document.get("filepath_local"):
-        raise FetchError(f"ECF {entry} has no PDF in RECAP")
+        raise FetchError(f"{label} has no PDF in RECAP")
     source_url = storage_url(document["filepath_local"])
 
     filing_dir = FILINGS_DIR / str(docket.docket_id)
     filing_dir.mkdir(parents=True, exist_ok=True)
-    pdf_path = filing_dir / f"ecf{entry}.pdf"
-    text_path = filing_dir / f"ecf{entry}.txt"
+    stem = label.lower().replace(" ", "")
+    pdf_path = filing_dir / f"{stem}.pdf"
+    text_path = filing_dir / f"{stem}.txt"
 
     pdf = cached_pdf(pdf_path, document.get("sha1"))
     if pdf is None:
@@ -63,6 +76,7 @@ def fetch_filing(client: CourtListenerClient, docket: Docket, entry: int) -> tup
         "docket_id": docket.docket_id,
         "case_name": docket.case_name,
         "entry_number": entry,
+        "attachment_number": attachment,
         "recap_document_id": document["id"],
         "description": document.get("description"),
         "source_url": source_url,
@@ -77,22 +91,40 @@ def fetch_filing(client: CourtListenerClient, docket: Docket, entry: int) -> tup
         "text_path": str(text_path.relative_to(REPO_ROOT)),
         "fetched_at": now(),
     }
-    (filing_dir / f"ecf{entry}.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    (filing_dir / f"{stem}.json").write_text(json.dumps(manifest, indent=2) + "\n")
     return manifest, text
 
 
-def find_main_document(client: CourtListenerClient, docket_id: int, entry: int) -> dict:
-    results = client.get_json(
+def ecf_label(entry: int, attachment: int | None = None) -> str:
+    """How a court cites the document: "ECF 29", or "ECF 29-1" for its first attachment."""
+    return f"ECF {entry}" if attachment is None else f"ECF {entry}-{attachment}"
+
+
+def list_documents(client: CourtListenerClient | CachedCourtListener, docket_id: int, entry: int) -> list[dict]:
+    """The entry's main document and its attachments, in one request (from the ledger when cached)."""
+    return client.get_json(
         "recap-documents/",
         {"docket_entry__docket__id": docket_id, "docket_entry__entry_number": entry},
     )["results"]
-    main = [d for d in results if d.get("attachment_number") is None]
-    if len(main) != 1:
+
+
+def available_attachments(documents: list[dict]) -> list[int]:
+    """Attachment numbers whose PDFs RECAP holds, in order."""
+    return sorted(
+        _attachment(d)
+        for d in documents
+        if _attachment(d) is not None and d.get("is_available") and d.get("filepath_local")
+    )
+
+
+def pick_document(documents: list[dict], docket_id: int, entry: int, attachment: int | None) -> dict:
+    wanted = [d for d in documents if _attachment(d) == attachment]
+    if len(wanted) != 1:
         raise FetchError(
-            f"expected one main document for docket {docket_id} ECF {entry}, "
-            f"found {len(main)} among {len(results)} documents"
+            f"expected one {'main document' if attachment is None else f'attachment {attachment}'} for "
+            f"docket {docket_id} ECF {entry}, found {len(wanted)} among {len(documents)} documents"
         )
-    return main[0]
+    return wanted[0]
 
 
 def cached_pdf(path: Path, expected_sha1: str | None) -> bytes | None:
@@ -101,3 +133,8 @@ def cached_pdf(path: Path, expected_sha1: str | None) -> bytes | None:
         return None
     pdf = path.read_bytes()
     return pdf if hashlib.sha1(pdf).hexdigest() == expected_sha1 else None
+
+
+def _attachment(document: dict) -> int | None:
+    number = document.get("attachment_number")
+    return None if number is None else int(number)
