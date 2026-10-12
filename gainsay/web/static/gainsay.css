@@ -287,7 +287,10 @@ code, .mono { font-family: var(--mono); font-size: 0.86em; }
 .bench h2 { margin: 20px 0 16px; font-size: clamp(30px, 3.4vw, 42px); }
 .bench p { color: var(--ink-secondary); line-height: 1.6; max-width: 48ch; }
 .bars { display: flex; flex-direction: column; gap: 18px; }
-.bars > div { display: grid; grid-template-columns: 160px 1fr 52px; gap: 14px; align-items: center; font-size: 14px; }
+.bar-groups { display: flex; flex-direction: column; gap: 28px; }
+.bars-title { font-size: 13px; font-weight: 600; color: var(--ink-secondary); }
+.bars > div { display: grid; grid-template-columns: 160px 1fr 52px; gap: 6px 14px; align-items: center; font-size: 14px; }
+.bars small { grid-column: 2 / -1; margin-top: -2px; font-size: 12px; color: var(--ink-muted); }
 .bars .track { display: block; height: 12px; border-radius: 999px; background: var(--surface-strong); overflow: hidden; }
 .bars .track span { display: block; height: 100%; border-radius: 999px; background: var(--ink-muted); }
 .bars .ours { font-weight: 600; }

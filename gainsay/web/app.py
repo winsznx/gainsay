@@ -24,7 +24,7 @@ from gainsay.checker import CHECKS
 from gainsay.courtlistener import BACKOFF_SECONDS, DAY, HOUR, MAX_RETRIES, MINUTE
 from gainsay.dockets import load_docket_config
 from gainsay.export import render_markdown
-from gainsay.overview import budget_status, docket_overview, held_out_benchmark, latest_mata_score
+from gainsay.overview import benchmark_result, budget_status, docket_overview, latest_mata_score
 from gainsay.ledger import DEFAULT_LEDGER_PATH, connect
 from gainsay.report import PROBLEM_STATUSES, CitationReport, RunReport, list_runs, load_run
 from gainsay.status import DOESNT_SUPPORT, NOT_FOUND, QUOTE_NOT_IN_OPINION, WRONG_CASE
@@ -164,7 +164,7 @@ def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False)
             "exemplars": first_of_each_status(specimen) if specimen else [],
             "score": score if specimen else None,
             "docket": docket_overview(conn),
-            "benchmark": held_out_benchmark(),
+            "benchmark": benchmark_result(),
         })
 
     @app.get("/docket", response_class=HTMLResponse)

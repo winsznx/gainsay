@@ -114,12 +114,32 @@ def latest_mata_score(results: Path = RESULTS_DIR) -> dict[str, Any] | None:
     return json.loads(scored[-1][1].read_text()) if scored else None
 
 
-def held_out_benchmark(results: Path = RESULTS_DIR) -> dict[str, Any] | None:
-    files = sorted(results.glob("lephantomcite-heldout-*.json"))
+def benchmark_result(results: Path = RESULTS_DIR) -> dict[str, Any] | None:
+    """The stored LePhantomCite score not used for development: the full split, else the held-out subset.
+
+    Five-type results score the citation-level types and all five; an older
+    held-out file scores only the citation-level types.
+    """
+    for pattern in ("lephantomcite-full-*-five-types.json", "lephantomcite-heldout-*-five-types.json"):
+        files = sorted(results.glob(pattern))
+        if files:
+            data = json.loads(files[-1].read_text())
+            return {
+                "size": data["subset"]["size"],
+                "role": data["subset"]["role"],
+                "citation_level": {a["arm"]: a for a in data["scores"]["citation_level"]["arms"]},
+                "all_types": {a["arm"]: a for a in data["scores"]["all_types"]["arms"]},
+            }
+    files = sorted(f for f in results.glob("lephantomcite-heldout-*.json") if "five-types" not in f.name)
     if not files:
         return None
     data = json.loads(files[-1].read_text())
-    return {"size": data["subset"]["size"], "arms": {a["arm"]: a for a in data["arms"]}}
+    return {
+        "size": data["subset"]["size"],
+        "role": "heldout",
+        "citation_level": {a["arm"]: a for a in data["arms"]},
+        "all_types": None,
+    }
 
 
 def problem_statuses() -> tuple[str, ...]:

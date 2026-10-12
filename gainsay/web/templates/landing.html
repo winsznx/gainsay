@@ -219,22 +219,54 @@
 </section>
 
 {% if benchmark %}
-{% set arms = benchmark.arms %}
+{% set cited = benchmark.citation_level %}
+{% set five = benchmark.all_types %}
+{% macro bar(label, arm, ours=false) -%}
+<div class="{{ 'ours' if ours }}" role="listitem">
+  <span>{{ label }}</span>
+  <span class="track"><span style="width: {{ (arm.f1 * 100) | round | int }}%"></span></span>
+  <b>{{ "%.2f" | format(arm.f1) }}</b>
+  <small>precision {{ "%.2f" | format(arm.precision) }}, recall {{ "%.2f" | format(arm.recall) }}</small>
+</div>
+{%- endmacro %}
 <section class="section" id="measured" aria-labelledby="bench-heading">
   <div class="bench">
     <div>
-      <span class="badge">LePhantomCite, held out</span>
-      <h2 id="bench-heading">Measured, including where it loses</h2>
+      <span class="badge">LePhantomCite, {{ "full eval split" if benchmark.role == "full" else "held-out excerpts" }}</span>
+      <h2 id="bench-heading">Measured against Claude working from memory</h2>
+      {% set best_cited = [cited["no-tools"], cited.get("no-tools-all") or cited["no-tools"]] | max(attribute="f1") %}
       <p>
-        On {{ benchmark.size }} held-out excerpts from the LePhantomCite benchmark, scored on its two citation-level
-        error types. Claude with no tools scored higher, so Gainsay makes no quality claim from this benchmark.
-        The claims on this page are the ones a stored run can back.
+        {{ benchmark.size }} {{ "excerpts, the whole eval split," if benchmark.role == "full" else "held-out excerpts" }}
+        from LePhantomCite, a benchmark of real brief excerpts with labelled citation errors. F1 is shown with its
+        precision and recall.
+        {% if cited.gainsay.f1 >= best_cited.f1 %}
+        On citation errors Gainsay scores higher than Claude with no tools, and every flag comes with the record that backs it.
+        {% else %}
+        On citation errors Claude with no tools scores higher.
+        {% endif %}
+        {% if five %}
+        {% if five.gainsay.f1 >= five["no-tools-all"].f1 %}
+        Across all five error types, which add misquotes, wrong pincites and statements the case doesn't support, Gainsay scores higher as well.
+        {% else %}
+        Across all five error types Claude with no tools scores higher.
+        {% endif %}
+        {% endif %}
       </p>
     </div>
-    <div class="bars" role="list" aria-label="F1 by approach">
-      <div class="ours" role="listitem"><span>Gainsay</span><span class="track"><span style="width: {{ (arms.gainsay.f1 * 100) | round | int }}%"></span></span><b>{{ "%.2f" | format(arms.gainsay.f1) }}</b></div>
-      <div role="listitem"><span>Database lookup alone</span><span class="track"><span style="width: {{ (arms['lookup-only'].f1 * 100) | round | int }}%"></span></span><b>{{ "%.2f" | format(arms['lookup-only'].f1) }}</b></div>
-      <div role="listitem"><span>Claude, no tools</span><span class="track"><span style="width: {{ (arms['no-tools'].f1 * 100) | round | int }}%"></span></span><b>{{ "%.2f" | format(arms['no-tools'].f1) }}</b></div>
+    <div class="bar-groups">
+      <div class="bars" role="list" aria-label="F1 on citation errors">
+        <p class="bars-title">Cases that don't exist or don't match their cite</p>
+        {{ bar("Gainsay", cited.gainsay, true) }}
+        {{ bar("Claude, no tools", cited.get("no-tools-all") or cited["no-tools"]) }}
+        {{ bar("Database lookup alone", cited["lookup-only"]) }}
+      </div>
+      {% if five %}
+      <div class="bars" role="list" aria-label="F1 on all five error types">
+        <p class="bars-title">All five error types</p>
+        {{ bar("Gainsay", five.gainsay, true) }}
+        {{ bar("Claude, no tools", five["no-tools-all"]) }}
+      </div>
+      {% endif %}
     </div>
   </div>
 </section>
