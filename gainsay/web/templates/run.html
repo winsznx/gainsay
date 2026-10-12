@@ -19,6 +19,9 @@
   <span class="dot" aria-hidden="true"></span>
   <div>
     <p class="now-line">{{ report.progress.narration }}</p>
+    {% if finished_by %}
+    <p class="meta">Run <a href="/runs/{{ finished_by }}">{{ finished_by }}</a> checked this filing to the end afterwards.</p>
+    {% endif %}
     {% if live and report.progress.wait_seconds is not none and run.status == "paused" %}
     <p class="meta">CourtListener quota refills in {{ report.progress.wait_seconds // 60 }}m {{ report.progress.wait_seconds % 60 }}s. {{ report.progress.queued }} citations queued.</p>
     {% endif %}

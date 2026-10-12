@@ -12,6 +12,7 @@ import re
 import sqlite3
 from functools import cache
 from pathlib import Path
+from typing import Any
 
 from courts_db import courts
 from fastapi import FastAPI, HTTPException, Request
@@ -111,6 +112,15 @@ def shown_status(status: str, read_only: bool) -> str:
     return "interrupted" if read_only and status == "running" else status
 
 
+def finished_by(conn: sqlite3.Connection, run: dict[str, Any]) -> int | None:
+    """The first later run that checked the same filing to the end."""
+    row = conn.execute(
+        "SELECT id FROM runs WHERE filing_id = ? AND id > ? AND status = 'complete' ORDER BY id LIMIT 1",
+        (run["filing_id"], run["id"]),
+    ).fetchone()
+    return row["id"] if row else None
+
+
 def first_of_each_status(report: RunReport) -> list[CitationReport]:
     """One citation per status, in status order, to show what each status looks like."""
     firsts: dict[str, CitationReport] = {}
@@ -189,12 +199,14 @@ def create_app(ledger_path: Path = DEFAULT_LEDGER_PATH, read_only: bool = False)
 
     @app.get("/runs/{run_id}", response_class=HTMLResponse)
     def run(request: Request, run_id: int, c: int | None = None):
-        report = load_run(ledger(), run_id)
+        conn = ledger()
+        report = load_run(conn, run_id)
         if report is None:
             raise HTTPException(status_code=404, detail=f"No run {run_id} in the ledger")
         return templates.TemplateResponse(request, "run.html", {
             "report": report,
             "selected": selected_citation(report, c),
+            "finished_by": finished_by(conn, report.run) if report.run["status"] != "complete" else None,
         })
 
     @app.get("/runs/{run_id}/report.md", response_class=PlainTextResponse)

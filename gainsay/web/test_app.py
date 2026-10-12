@@ -99,6 +99,14 @@ def test_snapshot_shows_unfinished_runs_as_stopped(tmp_path):
     conn.commit()
     assert ", interrupted" in snapshot.get(f"/runs/{run_id}").text
     assert "Interrupted" in snapshot.get("/runs").text
+    assert "checked this filing to the end" not in paused
+
+    filing_id = conn.execute("SELECT filing_id FROM runs WHERE id = ?", (run_id,)).fetchone()["filing_id"]
+    later = conn.execute(
+        "INSERT INTO runs (filing_id, version, status, started_at) VALUES (?, 'abc1234', 'complete', 'now')", (filing_id,)
+    ).lastrowid
+    conn.commit()
+    assert f'Run <a href="/runs/{later}">{later}</a> checked this filing to the end' in snapshot.get(f"/runs/{run_id}").text
 
 
 def test_read_only_snapshot_is_served_without_writing(tmp_path):
