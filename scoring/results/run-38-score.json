@@ -1,0 +1,165 @@
+{
+  "run_id": 38,
+  "run_version": "ac2e0d7",
+  "scored_at": "2026-10-12T00:50:13+00:00",
+  "answer_key": "scoring/mata_answer_key.json",
+  "summary": {
+    "true positive": 5,
+    "false positive": 0,
+    "false negative": 2,
+    "true negative": 6,
+    "precision": 1.0,
+    "recall": 0.7142857142857143,
+    "agree": 10,
+    "disagree": 3,
+    "undecided": 0
+  },
+  "cases": [
+    {
+      "case_name": "Ashcroft v. Iqbal",
+      "exists": true,
+      "court_finding": "supports",
+      "statuses": [
+        "Verified"
+      ],
+      "case_status": "Verified",
+      "outcome": "true negative",
+      "agrees_with_court": true
+    },
+    {
+      "case_name": "Doe v. United States",
+      "exists": true,
+      "court_finding": "supports_in_part",
+      "statuses": [
+        "Verified"
+      ],
+      "case_status": "Verified",
+      "outcome": "true negative",
+      "agrees_with_court": true
+    },
+    {
+      "case_name": "Shaboon v. Egyptair",
+      "exists": false,
+      "court_finding": "does_not_exist",
+      "statuses": [
+        "Not found in searched sources"
+      ],
+      "case_status": "Not found in searched sources",
+      "outcome": "true positive",
+      "agrees_with_court": true
+    },
+    {
+      "case_name": "Peterson v. Iran Air",
+      "exists": false,
+      "court_finding": "does_not_exist",
+      "statuses": [
+        "Not found in searched sources"
+      ],
+      "case_status": "Not found in searched sources",
+      "outcome": "true positive",
+      "agrees_with_court": true
+    },
+    {
+      "case_name": "Ehrlich v. American Airlines, Inc.",
+      "exists": true,
+      "court_finding": "does_not_support",
+      "statuses": [
+        "Wrong case"
+      ],
+      "case_status": "Wrong case",
+      "outcome": "true negative",
+      "agrees_with_court": false
+    },
+    {
+      "case_name": "Martinez v. Delta Airlines, Inc.",
+      "exists": false,
+      "court_finding": "does_not_exist",
+      "statuses": [
+        "Unverifiable"
+      ],
+      "case_status": "Unverifiable",
+      "outcome": "false negative",
+      "agrees_with_court": false
+    },
+    {
+      "case_name": "Estate of Durden v. KLM Royal Dutch Airlines",
+      "exists": false,
+      "court_finding": "does_not_exist",
+      "statuses": [
+        "Unverifiable"
+      ],
+      "case_status": "Unverifiable",
+      "outcome": "false negative",
+      "agrees_with_court": false
+    },
+    {
+      "case_name": "Varghese v. China Southern Airlines Co., Ltd.",
+      "exists": false,
+      "court_finding": "does_not_exist",
+      "statuses": [
+        "Not found in searched sources"
+      ],
+      "case_status": "Not found in searched sources",
+      "outcome": "true positive",
+      "agrees_with_court": true
+    },
+    {
+      "case_name": "Kaiser Steel Corp. v. W. S. Ranch Co.",
+      "exists": true,
+      "court_finding": "does_not_support",
+      "statuses": [
+        "Doesn't support the proposition",
+        "Doesn't support the proposition"
+      ],
+      "case_status": "Doesn't support the proposition",
+      "outcome": "true negative",
+      "agrees_with_court": true
+    },
+    {
+      "case_name": "Zicherman v. Korean Air Lines Co., Ltd.",
+      "exists": false,
+      "court_finding": "does_not_exist_as_cited",
+      "statuses": [
+        "Not found in searched sources",
+        "Not found in searched sources"
+      ],
+      "case_status": "Not found in searched sources",
+      "outcome": "true positive",
+      "agrees_with_court": true
+    },
+    {
+      "case_name": "El Al Israel Airlines, Ltd. v. Tsui Yuan Tseng",
+      "exists": true,
+      "court_finding": "quote_not_in_opinion",
+      "statuses": [
+        "Quote not in opinion",
+        "Doesn't support the proposition"
+      ],
+      "case_status": "Quote not in opinion",
+      "outcome": "true negative",
+      "agrees_with_court": true
+    },
+    {
+      "case_name": "Miller v. United Airlines, Inc.",
+      "exists": false,
+      "court_finding": "does_not_exist",
+      "statuses": [
+        "Not found in searched sources"
+      ],
+      "case_status": "Not found in searched sources",
+      "outcome": "true positive",
+      "agrees_with_court": true
+    },
+    {
+      "case_name": "In re Air Crash Disaster Near New Orleans, La.",
+      "exists": true,
+      "court_finding": "does_not_support",
+      "statuses": [
+        "Doesn't support the proposition"
+      ],
+      "case_status": "Doesn't support the proposition",
+      "outcome": "true negative",
+      "agrees_with_court": true
+    }
+  ]
+}
