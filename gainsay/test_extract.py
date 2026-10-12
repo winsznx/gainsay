@@ -390,3 +390,35 @@ def test_a_dashed_page_number_at_a_line_end_is_removed():
     )
     (citation,) = extract(text).citations
     assert citation.authority.case_name == "Sabine Pilot Serv., Inc. v. Hauck"
+
+
+def test_a_court_parenthetical_eyecite_misreads_still_ends_the_citation():
+    text = (
+        "In Morales v. SimuFlite Training Int'l, Inc., 132 S.W.3d 603, 608 (Tex. App.— Fort Worth 2004, no pet.), "
+        "the court held that \"whether a statement is a requirement is generally a question of fact.\" Similarly, in "
+        "White v. FCI USA, Inc., 319 F.3d 672, 676 (5th Cir. 2003), the court noted it is \"typically a fact issue.\""
+    )
+    morales, white = extract(text).citations
+    assert morales.quotes == ["whether a statement is a requirement is generally a question of fact."]
+    assert morales.cite_text.endswith("no pet.)")
+    assert white.quotes == ["typically a fact issue."]
+
+
+def test_a_quote_in_a_citations_parenthetical_is_that_citations():
+    text = (
+        "The jury weighs the evidence. See Burton v. Freescale Semiconductor, Inc., 798 F.3d 222, 233 (5th Cir. 2015) "
+        "(in employment cases, \"the issue of the employer's true motive is typically a jury question\")."
+    )
+    (burton,) = extract(text).citations
+    assert burton.quotes == ["the issue of the employer's true motive is typically a jury question"]
+
+
+def test_a_case_cited_inside_a_parenthetical_does_not_take_the_quote_after_it():
+    text = (
+        "Indiana protects commercial values. See also Felsher, 755 N.E.2d at 598 "
+        "(citing Hartzler v. Goshen Churn & Ladder Co., 55 Ind. App. 455, 464 (1914)) "
+        "(Indiana courts look to \"whether the name has come to denote the plaintiff's goods.\")."
+    )
+    felsher, hartzler = extract(text).citations
+    assert felsher.quotes == ["whether the name has come to denote the plaintiff's goods."]
+    assert hartzler.quotes == []

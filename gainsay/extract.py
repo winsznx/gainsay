@@ -389,10 +389,38 @@ def _cite_end(citation: CitationBase) -> int:
 
 
 def _group_span(text: str, group: list[CitationBase]) -> tuple[int, int]:
+    """From the case name to the end of the parentheticals right after the last cite.
+
+    eyecite's span can run on to the next year it finds when it doesn't read
+    the court parenthetical ("(Tex. App.— Fort Worth 2004, no pet.)"), past a
+    quotation and into the next citation, so it is cut where the citation's
+    own parentheticals end.
+    """
     lead = group[0]
     start = _name_start(text, lead)
-    end = max(_full_span(lead)[1], _cite_end(group[-1]))
+    cite_end = _cite_end(group[-1])
+    end = max(_full_span(lead)[1], cite_end)
+    clause_end = _parentheticals_end(text, group[-1].span()[1])
+    if clause_end > cite_end:
+        end = min(end, clause_end)
     return start, end
+
+
+def _parentheticals_end(text: str, cite_end: int) -> int:
+    """Where the pincite and the parentheticals directly after a cite end."""
+    position = cite_end + len(_PIN_AFTER.match(text, cite_end).group())
+    end = cite_end
+    while position < len(text) and text[position] == "(":
+        depth, close = 0, position
+        while close < len(text):
+            depth += {"(": 1, ")": -1}.get(text[close], 0)
+            if depth == 0:
+                break
+            close += 1
+        end = position = close + 1
+        while position < len(text) and text[position] in " \t\n":
+            position += 1
+    return end
 
 
 def _name_start(text: str, citation: CitationBase) -> int:
@@ -694,20 +722,38 @@ def _attribute_quotes(
     sentences: list[tuple[int, int]],
     occurrences: list[Occurrence],
 ) -> None:
-    """Give each quotation to the citation that introduces it or follows it.
+    """Give each quotation to the citation it belongs to.
 
-    Introduced: the last citation before the opening mark in the same sentence
-    ("Varghese, 925 F.3d 1339 (11th Cir. 2019), stating “..."). Trailing: a
-    citation starting right after the closing mark ("...." Smith, 1 U.S. 1).
+    In its parenthetical: the quote sits inside the citation's own span
+    ("Burton, 798 F.3d 222 (in employment cases, “...”)"). Introduced: the
+    last citation before the opening mark in the same sentence ("Varghese, 925
+    F.3d 1339 (11th Cir. 2019), stating “..."), skipping one nested in a
+    "(citing ...)" that closes first. Trailing: a citation starting right
+    after the closing mark ("...." Smith, 1 U.S. 1).
     """
     for qs, qe in quotes:
         outside = [o for o in occurrences if not qs <= o.span[0] < qe]
+        enclosing = [o for o in outside if o.span[0] < qs and qe <= o.span[1]]
         sentence_start = next(s for s, e in sentences if s <= qs - 1 < e)
-        introducing = [o for o in outside if sentence_start <= o.span[0] and o.span[1] < qs]
+        introducing = [
+            o for o in outside
+            if sentence_start <= o.span[0] and o.span[1] < qs and not _closes_parenthetical(text[o.span[1]:qs])
+        ]
         trailing = [o for o in outside if 0 < o.span[0] - qe <= 6]
-        owner = introducing[-1] if introducing else (trailing[0] if trailing else None)
+        owner = (enclosing[-1] if enclosing else introducing[-1] if introducing
+                 else trailing[0] if trailing else None)
         if owner is not None:
             owner.quotes.append(text[qs:qe])
+
+
+def _closes_parenthetical(text: str) -> bool:
+    """Whether text closes a parenthesis it didn't open."""
+    depth = 0
+    for char in text:
+        depth += {"(": 1, ")": -1}.get(char, 0)
+        if depth < 0:
+            return True
+    return False
 
 
 def _full_span(citation: CitationBase) -> tuple[int, int]:
